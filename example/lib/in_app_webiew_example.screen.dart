@@ -39,7 +39,7 @@ class _InAppWebViewExampleScreenState extends State<InAppWebViewExampleScreen> {
       }
     );
     contextMenu.menuItems = [
-      ContextMenuItem(androidId: 1, iosId: "1", title: "Special", action: () async {
+      ContextMenuItem(androidId: 1, iosId: "1", title: "复制", action: () async {
         print("Menu item Special clicked!");
       })
     ];
@@ -76,13 +76,13 @@ class _InAppWebViewExampleScreenState extends State<InAppWebViewExampleScreen> {
                   BoxDecoration(border: Border.all(color: Colors.blueAccent)),
                   child: InAppWebView(
                     contextMenu: contextMenu,
-                    initialUrl: "https://www.youtube.com/watch?v=oD5RtLhhubg",
+                    initialUrl: "https://www.cmtzz.cn/",
                     // initialFile: "assets/index.html",
                     initialHeaders: {},
                     initialOptions: InAppWebViewGroupOptions(
                         crossPlatform: InAppWebViewOptions(
                           debuggingEnabled: true,
-                          disableContextMenu: true,
+                          disableContextMenu: false,
                         ),
                     ),
                     onWebViewCreated: (InAppWebViewController controller) {
