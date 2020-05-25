@@ -4,12 +4,11 @@
 //
 //  Created by Lorenzo on 13/11/18.
 //
-
 import Foundation
 import WebKit
 
 public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatformView {
-    
+
     private weak var registrar: FlutterPluginRegistrar?
     var webView: InAppWebView?
     var viewId: Any = 0
@@ -18,10 +17,10 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
 
     init(registrar: FlutterPluginRegistrar, withFrame frame: CGRect, viewIdentifier viewId: Any, arguments args: NSDictionary) {
         super.init()
-        
+
         self.registrar = registrar
         self.viewId = viewId
-        
+
         var channelName = ""
         if let id = viewId as? Int64 {
             channelName = "com.pichillilorenzo/flutter_inappwebview_" + String(id)
@@ -30,25 +29,26 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
         }
         channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
         channel!.setMethodCallHandler(LeakAvoider(delegate: self).handle)
-        
+
         myView = UIView(frame: frame)
-        
+
         let initialUrl = args["initialUrl"] as? String
         let initialFile = args["initialFile"] as? String
         let initialData = args["initialData"] as? [String: String]
         let initialHeaders = args["initialHeaders"] as? [String: String]
         let initialOptions = args["initialOptions"] as! [String: Any?]
+        let contextMenu = args["contextMenu"] as? [String: Any]
 
         let options = InAppWebViewOptions()
         let _ = options.parse(options: initialOptions)
         let preWebviewConfiguration = InAppWebView.preWKWebViewConfiguration(options: options)
 
-        webView = InAppWebView(frame: myView!.bounds, configuration: preWebviewConfiguration, IABController: nil, channel: channel!)
+        webView = InAppWebView(frame: myView!.bounds, configuration: preWebviewConfiguration, IABController: nil, contextMenu: contextMenu, channel: channel!)
         webView!.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         myView!.autoresizesSubviews = true
         myView!.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         myView!.addSubview(webView!)
-        
+
         webView!.options = options
         webView!.prepare()
 
@@ -79,7 +79,7 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
             }
         }
         load(initialUrl: initialUrl, initialFile: initialFile, initialData: initialData, initialHeaders: initialHeaders)
-        
+
         if (frame.isEmpty && viewId is String) {
             /// Note: The WKWebView behaves very unreliable when rendering offscreen
             /// on a device. This is especially true with JavaScript, which simply
@@ -94,19 +94,19 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
             channel!.invokeMethod("onHeadlessWebViewCreated", arguments: arguments)
         }
     }
-    
+
     deinit {
         print("FlutterWebViewController - dealloc")
         channel?.setMethodCallHandler(nil)
-        webView!.dispose()
+        webView?.dispose()
         webView = nil
         myView = nil
     }
-    
+
     public func view() -> UIView {
         return myView!
     }
-    
+
     public func load(initialUrl: String?, initialFile: String?, initialData: [String: String]?, initialHeaders: [String: String]?) {
         if initialFile != nil {
             do {
@@ -117,7 +117,7 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
             }
             return
         }
-        
+
         if initialData != nil {
             let data = initialData!["data"]!
             let mimeType = initialData!["mimeType"]!
@@ -129,7 +129,7 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
             webView!.loadUrl(url: url, headers: initialHeaders)
         }
     }
-    
+
     public override func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         switch call.method {
@@ -182,7 +182,7 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
                 if webView != nil {
                     let url = (arguments!["url"] as? String)!
                     let headers = (arguments!["headers"] as? [String: String])!
-                    
+
                     do {
                         try webView!.loadFile(url: url, headers: headers)
                         result(true)
@@ -373,7 +373,8 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
             case "printCurrentPage":
                 if webView != nil {
                     webView!.printCurrentPage(printCompletionHandler: {(completed, error) in
-                        if !completed, let _ = error {
+                        if !completed, let err = error {
+                            print(err.localizedDescription)
                             result(false)
                             return
                         }
@@ -397,6 +398,32 @@ public class FlutterWebViewController: FlutterMethodCallDelegate, FlutterPlatfor
                 break
             case "hasOnlySecureContent":
                 result( (webView != nil) ? webView!.hasOnlySecureContent : nil )
+                break
+            case "getSelectedText":
+                if webView != nil {
+                    webView!.getSelectedText { (value, error) in
+                        if let err = error {
+                            print(err.localizedDescription)
+                        }
+                        result(value)
+                    }
+                }
+                else {
+                    result(nil)
+                }
+                break
+            case "getHitTestResult":
+                if webView != nil {
+                    webView!.getHitTestResult { (value, error) in
+                        if let err = error {
+                            print(err.localizedDescription)
+                        }
+                        result(value)
+                    }
+                }
+                else {
+                    result(nil)
+                }
                 break
             default:
                 result(FlutterMethodNotImplemented)

@@ -7,7 +7,7 @@
 [![Donate to this project using Paypal](https://img.shields.io/badge/paypal-donate-yellow.svg)](https://www.paypal.me/LorenzoPichilli)
 [![Donate to this project using Patreon](https://img.shields.io/badge/patreon-donate-yellow.svg)](https://www.patreon.com/bePatron?u=9269604)
 
-A Flutter plugin that allows you to add an inline webview or open an in-app browser window.
+A Flutter plugin that allows you to add an inline webview, to use an headless webview, and to open an in-app browser window.
 
 ### Requirements
 
@@ -16,19 +16,53 @@ A Flutter plugin that allows you to add an inline webview or open an in-app brow
 - Android: `minSdkVersion 17` and add support for `androidx` (see [AndroidX Migration](https://flutter.dev/docs/development/androidx-migration) to migrate an existing app)
 - iOS: `--ios-language swift`, Xcode version `>= 11`
 
+### IMPORTANT Note for Android and iOS
+
+If you're running an application and need to access the binary messenger before `runApp()` has been called
+(for example, during plugin initialization), then you need to explicitly call the `WidgetsFlutterBinding.ensureInitialized()` first.
+
+An example:
+```dart
+void main() {
+  // it should be the first line in main method
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // rest of your app code
+  runApp(MyApp());
+}
+```
+
 ### IMPORTANT Note for Android
 
-If you are starting a new fresh app, you need to create the Flutter App with `flutter create --androidx -i swift` to add support for `androidx`, otherwise it won't work (see [AndroidX Migration](https://flutter.dev/docs/development/androidx-migration) to migrate an existing app).
+If you are starting a new fresh app, you need to create the Flutter App with `flutter create --androidx -i swift`
+to add support for `androidx`, otherwise it won't work (see [AndroidX Migration](https://flutter.dev/docs/development/androidx-migration) to migrate an existing app).
 
-During the build, if Android fails with `Error: uses-sdk:minSdkVersion 16 cannot be smaller than version 17 declared in library`, it means that you need to update the `minSdkVersion` of your `android/app/build.gradle` file to at least `17`.
+During the build, if Android fails with `Error: uses-sdk:minSdkVersion 16 cannot be smaller than version 17 declared in library`,
+it means that you need to update the `minSdkVersion` of your `android/app/build.gradle` file to at least `17`.
 
-Also, you need to add `<uses-permission android:name="android.permission.INTERNET"/>` in the `android/app/src/main/AndroidManifest.xml` file in order to give minimum permission to perform network operations in your application. 
+Also, you need to add `<uses-permission android:name="android.permission.INTERNET"/>` in the `android/app/src/main/AndroidManifest.xml`
+file in order to give minimum permission to perform network operations in your application.
+
+If you `flutter create`d your project prior to version `1.12`, you need to make sure to update your project in order to use the new **Java Embedding API**!
+Take a look at the official Flutter wiki: [Upgrading pre 1.12 Android projects](https://github.com/flutter/flutter/wiki/Upgrading-pre-1.12-Android-projects).
+Also, you can refer to the [#343](https://github.com/pichillilorenzo/flutter_inappwebview/issues/343) issue.
+Remember to add `<meta-data>` tag inside the `<application>` tag of your `android/app/src/main/AndroidManifest.xml`:
+```xml
+<meta-data
+  android:name="flutterEmbedding"
+  android:value="2" />
+```
+as mentioned in the 6th step of [Full-Flutter app migration](https://github.com/flutter/flutter/wiki/Upgrading-pre-1.12-Android-projects#full-flutter-app-migration) guide.
+**Without this, the plugin will NOT work!!!**
 
 Because of [Flutter AndroidX compatibility](https://flutter.dev/docs/development/packages-and-plugins/androidx-compatibility), the latest version that doesn't use `AndroidX` is `0.6.0`.
 
+Also, note that to use the `InAppWebView` widget on Android, it requires **Android API 20+** (see [AndroidView](https://api.flutter.dev/flutter/widgets/AndroidView-class.html)).
+
 ### IMPORTANT Note for iOS
 
-If you are starting a new fresh app, you need to create the Flutter App with `flutter create --androidx -i swift` (see [flutter/flutter#13422 (comment)](https://github.com/flutter/flutter/issues/13422#issuecomment-392133780)), otherwise, you will get this message:
+If you are starting a new fresh app, you need to create the Flutter App with `flutter create --androidx -i swift`
+(see [flutter/flutter#13422 (comment)](https://github.com/flutter/flutter/issues/13422#issuecomment-392133780)), otherwise, you will get this message:
 ```
 === BUILD TARGET flutter_inappwebview OF PROJECT Pods WITH CONFIGURATION Debug ===
 The “Swift Language Version” (SWIFT_VERSION) build setting must be set to a supported value for targets which use Swift. Supported values are: 3.0, 4.0, 4.2, 5.0. This setting can be set in the build settings editor.
@@ -53,6 +87,71 @@ end
 
 Instead, if you have already a non-swift project, you can check this issue to solve the problem: [Friction adding swift plugin to objective-c project](https://github.com/flutter/flutter/issues/16049).
 
+**Support HTTP request**: you need to disable Apple Transport Security (ATS) feature. There're two options:
+1. Disable ATS for a specific domain only ([Official wiki](https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity/nsexceptiondomains)): (add following codes to your `Info.plist` file)
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+  <key>NSExceptionDomains</key>
+  <dict>
+    <key>www.yourserver.com</key>
+    <dict>
+      <!-- add this key to enable subdomains such as sub.yourserver.com -->
+      <key>NSIncludesSubdomains</key>
+      <true/>
+      <!-- add this key to allow standard HTTP requests, thus negating the ATS -->
+      <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+      <true/>
+      <!-- add this key to specify the minimum TLS version to accept -->
+      <key>NSTemporaryExceptionMinimumTLSVersion</key>
+      <string>TLSv1.1</string>
+    </dict>
+  </dict>
+</dict>
+```
+2. Completely disable ATS ([Official wiki](https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity/nsallowsarbitraryloads)): (add following codes to your `Info.plist` file)
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key><true/>
+</dict>
+```
+
+Other useful `Info.plist` properties are:
+* `NSAllowsLocalNetworking`: A Boolean value indicating whether to allow loading of local resources ([Official wiki](https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity/nsallowslocalnetworking));
+* `NSAllowsArbitraryLoadsInWebContent`: A Boolean value indicating whether all App Transport Security restrictions are disabled for requests made from web views ([Official wiki](https://developer.apple.com/documentation/bundleresources/information_property_list/nsapptransportsecurity/nsallowsarbitraryloadsinwebcontent)).
+
+### How to enable the usage of camera for HTML inputs such as `<input type="file" accept="image/*" capture>`
+
+In order to be able to use camera, for example, for taking images through `<input type="file" accept="image/*" capture>` HTML tag, you need to ask camera permission.
+To ask camera permission, you can simply use the [permission_handler](https://pub.dev/packages/permission_handler) plugin!
+
+Example:
+```dart
+import 'package:permission_handler/permission_handler.dart';
+
+Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Permission.camera.request();
+
+  runApp(MyApp());
+}
+```
+
+On **Android**, you need to add some additional configurations.
+Add the following codes inside the `<application>` tag of your `android/app/src/main/AndroidManifest.xml`:
+```xml
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="${applicationId}.flutter_inappwebview.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/provider_paths" />
+</provider>
+```
+
 ## Getting Started
 
 For help getting started with Flutter, view our online
@@ -67,7 +166,8 @@ First, add `flutter_inappwebview` as a [dependency in your pubspec.yaml file](ht
 ## Usage
 
 Classes:
-- [InAppWebView](#inappwebview-class): Flutter Widget for adding an **inline native WebView** integrated into the flutter widget tree. To use `InAppWebView` class on iOS you need to opt-in for the embedded views preview by adding a boolean property to the app's `Info.plist` file, with the key `io.flutter.embedded_views_preview` and the value `YES`.
+- [InAppWebView](#inappwebview-class): Flutter Widget for adding an **inline native WebView** integrated into the flutter widget tree. To use `InAppWebView` class on iOS you need to opt-in for the embedded views preview by adding a boolean property to the app's `Info.plist` file, with the key `io.flutter.embedded_views_preview` and the value `YES`. Also, note that on Android it requires **Android API 20+** (see [AndroidView](https://api.flutter.dev/flutter/widgets/AndroidView-class.html)).
+- [ContextMenu](#contextmenu-class): This class represents the WebView context menu.
 - [HeadlessInAppWebView](#headlessinappwebview-class): Class that represents a WebView in headless mode. It can be used to run a WebView in background without attaching an `InAppWebView` to the widget tree.
 - [InAppBrowser](#inappbrowser-class): In-App Browser using native WebView.
 - [ChromeSafariBrowser](#chromesafaribrowser-class): In-App Browser using [Chrome Custom Tabs](https://developer.android.com/reference/android/support/customtabs/package-summary) on Android / [SFSafariViewController](https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller) on iOS.
@@ -118,6 +218,8 @@ Keyboard support within webviews is also experimental.
 
 To use `InAppWebView` class on iOS you need to opt-in for the embedded views preview by adding a boolean property to the app's `Info.plist` file, with the key `io.flutter.embedded_views_preview` and the value `YES`.
 
+Also, note that on Android it requires **Android API 20+** (see [AndroidView](https://api.flutter.dev/flutter/widgets/AndroidView-class.html)).
+
 Use `InAppWebViewController` to control the WebView instance.
 Example:
 ```dart
@@ -133,7 +235,7 @@ Future main() async {
 class MyApp extends StatefulWidget {
   @override
   _MyAppState createState() => new _MyAppState();
-}z
+}
 
 class _MyAppState extends State<MyApp> {
 
@@ -296,6 +398,8 @@ Screenshots:
 * `resumeTimers`: On Android, it resumes all layout, parsing, and JavaScript timers for all WebViews. This will resume dispatching all timers. On iOS, it resumes all layout, parsing, and JavaScript timers to just this WebView.
 * `printCurrentPage`: Prints the current page.
 * `getScale`: Gets the current scale of this WebView.
+* `getSelectedText`: Gets the selected text.
+* `getHitTestResult`: Gets the hit result for hitting an HTML elements.
 * `static getDefaultUserAgent`: Gets the default user agent.
 
 ##### `InAppWebViewController` Android-specific methods
@@ -315,6 +419,7 @@ Android-specific methods can be called using the `InAppWebViewController.android
 
 iOS-specific methods can be called using the `InAppWebViewController.ios` attribute.
 
+* `hasOnlySecureContent`: A Boolean value indicating whether all resources on the page have been loaded over securely encrypted connections.
 * `reloadFromOrigin`: Reloads the current page, performing end-to-end revalidation using cache-validating conditionals if possible.
 
 ##### About the JavaScript handler
@@ -389,6 +494,7 @@ Instead, on the `onLoadStop` WebView event, you can use `callHandler` directly:
 * `transparentBackground`: Set to `true` to make the background of the WebView transparent. If your app has a dark theme, this can prevent a white flash on initialization. The default value is `false`.
 * `disableVerticalScroll`: Set to `true` to disable vertical scroll. The default value is `false`.
 * `disableHorizontalScroll`: Set to `true` to disable horizontal scroll. The default value is `false`.
+* `disableContextMenu`: Set to `true` to disable context menu. The default value is `false`.
 
 ##### `InAppWebView` Android-specific options
 
@@ -491,6 +597,8 @@ Event names that starts with `android` or `ios` are events platform-specific.
 * `shouldInterceptFetchRequest`: Event fired when a request is sent to a server through [Fetch API](https://developer.mozilla.org/it/docs/Web/API/Fetch_API) (to use this event, the `useShouldInterceptFetchRequest` option must be `true`).
 * `onPrint`: Event fired when `window.print()` is called from JavaScript side.
 * `onLongPressHitTestResult`: Event fired when an HTML element of the webview has been clicked and held.
+* `onEnterFullscreen`: Event fired when the current page has entered full screen mode.
+* `onExitFullscreen`: Event fired when the current page has exited full screen mode.
 * `androidOnSafeBrowsingHit`: Event fired when the webview notifies that a loading URL has been flagged by Safe Browsing (available only on Android).
 * `androidOnPermissionRequest`: Event fired when the webview is requesting permission to access the specified resources and the permission currently isn't granted or denied (available only on Android).
 * `androidOnGeolocationPermissionsShowPrompt`: Event that notifies the host application that web content from the specified origin is attempting to use the Geolocation API, but no permission state is currently set for that origin (available only on Android).
@@ -498,6 +606,166 @@ Event names that starts with `android` or `ios` are events platform-specific.
 * `iosOnWebContentProcessDidTerminate`: Invoked when the web view's web content process is terminated (available only on iOS).
 * `iosOnDidCommit`: Called when the web view begins to receive web content (available only on iOS).
 * `iosOnDidReceiveServerRedirectForProvisionalNavigation`: Called when a web view receives a server redirect (available only on iOS).
+
+### `ContextMenu` class
+
+Class that represents the WebView context menu. It used by `WebView.contextMenu`.
+
+`ContextMenu.menuItems` contains the list of the custom `ContextMenuItem`.
+
+**NOTE**: To make it work properly on Android, JavaScript should be enabled!
+
+Example:
+```dart
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
+Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(new MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => new _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+
+  InAppWebViewController webView;
+  ContextMenu contextMenu;
+  String url = "";
+  double progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    contextMenu = ContextMenu(
+        onCreateContextMenu: (hitTestResult) async {
+          print("onCreateContextMenu");
+          print(hitTestResult.extra);
+          print(await webView.getSelectedText());
+        },
+        onHideContextMenu: () {
+          print("onHideContextMenu");
+        },
+        onContextMenuActionItemClicked: (contextMenuItemClicked) {
+          var id = (Platform.isAndroid) ? contextMenuItemClicked.androidId : contextMenuItemClicked.iosId;
+          print("onContextMenuActionItemClicked: " + id.toString() + " " + contextMenuItemClicked.title);
+        }
+    );
+
+    contextMenu.menuItems = [
+      ContextMenuItem(androidId: 1, iosId: "1", title: "Special", action: () async {
+        print("Menu item Special clicked!");
+      })
+    ];
+
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('InAppWebView Example'),
+        ),
+        body: Container(
+            child: Column(children: <Widget>[
+              Container(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                    "CURRENT URL\n${(url.length > 50) ? url.substring(0, 50) + "..." : url}"),
+              ),
+              Container(
+                  padding: EdgeInsets.all(10.0),
+                  child: progress < 1.0
+                      ? LinearProgressIndicator(value: progress)
+                      : Container()),
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(10.0),
+                  decoration:
+                  BoxDecoration(border: Border.all(color: Colors.blueAccent)),
+                  child: InAppWebView(
+                    initialUrl: "https://flutter.dev/",
+                    contextMenu: contextMenu,
+                    initialHeaders: {},
+                    initialOptions: InAppWebViewGroupOptions(
+                        crossPlatform: InAppWebViewOptions(
+                          debuggingEnabled: true,
+                        )
+                    ),
+                    onWebViewCreated: (InAppWebViewController controller) {
+                      webView = controller;
+                    },
+                    onLoadStart: (InAppWebViewController controller, String url) {
+                      setState(() {
+                        this.url = url;
+                      });
+                    },
+                    onLoadStop: (InAppWebViewController controller, String url) async {
+                      setState(() {
+                        this.url = url;
+                      });
+                    },
+                    onProgressChanged: (InAppWebViewController controller, int progress) {
+                      setState(() {
+                        this.progress = progress / 100;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              ButtonBar(
+                alignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  RaisedButton(
+                    child: Icon(Icons.arrow_back),
+                    onPressed: () {
+                      if (webView != null) {
+                        webView.goBack();
+                      }
+                    },
+                  ),
+                  RaisedButton(
+                    child: Icon(Icons.arrow_forward),
+                    onPressed: () {
+                      if (webView != null) {
+                        webView.goForward();
+                      }
+                    },
+                  ),
+                  RaisedButton(
+                    child: Icon(Icons.refresh),
+                    onPressed: () {
+                      if (webView != null) {
+                        webView.reload();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ])),
+      ),
+    );
+  }
+}
+```
+
+### `ContextMenu` Events
+
+* `onCreateContextMenu`: Event fired when the context menu for this WebView is being built.
+* `onHideContextMenu`: Event fired when the context menu for this WebView is being hidden.
+* `onContextMenuActionItemClicked`: Event fired when a context menu item has been clicked. 
 
 ### `HeadlessInAppWebView` class
 

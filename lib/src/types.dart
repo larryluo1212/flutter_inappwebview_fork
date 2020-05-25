@@ -1,3 +1,4 @@
+
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -97,10 +98,10 @@ class InAppWebViewInitialData {
 
   InAppWebViewInitialData(
       {@required this.data,
-      this.mimeType = "text/html",
-      this.encoding = "utf8",
-      this.baseUrl = "about:blank",
-      this.historyUrl = "about:blank"});
+        this.mimeType = "text/html",
+        this.encoding = "utf8",
+        this.baseUrl = "about:blank",
+        this.historyUrl = "about:blank"});
 
   Map<String, String> toMap() {
     return {
@@ -117,24 +118,18 @@ class InAppWebViewInitialData {
 ///Public class representing a resource request of the WebView.
 ///It is used by the event [shouldInterceptRequest()].
 class WebResourceRequest {
-
   String url;
   Map<String, String> headers;
   String method;
-
   WebResourceRequest({@required this.url, @required this.headers, @required this.method});
-
 }
-
 ///Public class representing a resource response of the WebView.
 ///It is used by the event [shouldInterceptRequest()].
 class WebResourceResponse {
   String contentType;
   String contentEncoding;
   Uint8List data;
-
   WebResourceResponse({@required this.contentType, this.contentEncoding = "utf-8", @required this.data}): assert(contentType != null && contentEncoding != null && data != null);
-
   Map<String, dynamic> toMap() {
     return {
       "contentType": contentType,
@@ -158,8 +153,8 @@ class CustomSchemeResponse {
 
   CustomSchemeResponse(
       {@required this.data,
-      @required this.contentType,
-      this.contentEnconding = 'utf-8'});
+        @required this.contentType,
+        this.contentEnconding = 'utf-8'});
 
   Map<String, dynamic> toJson() {
     return {
@@ -263,9 +258,9 @@ class JsAlertResponse {
 
   JsAlertResponse(
       {this.message = "",
-      this.handledByClient = false,
-      this.confirmButtonTitle = "",
-      this.action = JsAlertResponseAction.CONFIRM});
+        this.handledByClient = false,
+        this.confirmButtonTitle = "",
+        this.action = JsAlertResponseAction.CONFIRM});
 
   Map<String, dynamic> toMap() {
     return {
@@ -311,10 +306,10 @@ class JsConfirmResponse {
 
   JsConfirmResponse(
       {this.message = "",
-      this.handledByClient = false,
-      this.confirmButtonTitle = "",
-      this.cancelButtonTitle = "",
-      this.action = JsConfirmResponseAction.CANCEL});
+        this.handledByClient = false,
+        this.confirmButtonTitle = "",
+        this.cancelButtonTitle = "",
+        this.action = JsConfirmResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -367,12 +362,12 @@ class JsPromptResponse {
 
   JsPromptResponse(
       {this.message = "",
-      this.defaultValue = "",
-      this.handledByClient = false,
-      this.confirmButtonTitle = "",
-      this.cancelButtonTitle = "",
-      this.value,
-      this.action = JsPromptResponseAction.CANCEL});
+        this.defaultValue = "",
+        this.handledByClient = false,
+        this.confirmButtonTitle = "",
+        this.cancelButtonTitle = "",
+        this.value,
+        this.action = JsPromptResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -415,15 +410,15 @@ class SafeBrowsingThreat {
   }
 
   static const SAFE_BROWSING_THREAT_UNKNOWN =
-      const SafeBrowsingThreat._internal(0);
+  const SafeBrowsingThreat._internal(0);
   static const SAFE_BROWSING_THREAT_MALWARE =
-      const SafeBrowsingThreat._internal(1);
+  const SafeBrowsingThreat._internal(1);
   static const SAFE_BROWSING_THREAT_PHISHING =
-      const SafeBrowsingThreat._internal(2);
+  const SafeBrowsingThreat._internal(2);
   static const SAFE_BROWSING_THREAT_UNWANTED_SOFTWARE =
-      const SafeBrowsingThreat._internal(3);
+  const SafeBrowsingThreat._internal(3);
   static const SAFE_BROWSING_THREAT_BILLING =
-      const SafeBrowsingThreat._internal(4);
+  const SafeBrowsingThreat._internal(4);
 
   bool operator ==(value) => value == _value;
 
@@ -445,7 +440,7 @@ class SafeBrowsingResponseAction {
 
   ///Display the default interstitial.
   static const SHOW_INTERSTITIAL =
-      const SafeBrowsingResponseAction._internal(2);
+  const SafeBrowsingResponseAction._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -464,7 +459,7 @@ class SafeBrowsingResponse {
 
   SafeBrowsingResponse(
       {this.report = true,
-      this.action = SafeBrowsingResponseAction.SHOW_INTERSTITIAL});
+        this.action = SafeBrowsingResponseAction.SHOW_INTERSTITIAL});
 
   Map<String, dynamic> toMap() {
     return {"report": report, "action": action?.toValue()};
@@ -485,7 +480,7 @@ class HttpAuthResponseAction {
 
   ///Uses the credentials stored for the current host.
   static const USE_SAVED_HTTP_AUTH_CREDENTIALS =
-      const HttpAuthResponseAction._internal(2);
+  const HttpAuthResponseAction._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -509,9 +504,9 @@ class HttpAuthResponse {
 
   HttpAuthResponse(
       {this.username = "",
-      this.password = "",
-      this.permanentPersistence = false,
-      this.action = HttpAuthResponseAction.CANCEL});
+        this.password = "",
+        this.permanentPersistence = false,
+        this.action = HttpAuthResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -622,9 +617,9 @@ class ServerTrustChallenge {
 
   ServerTrustChallenge(
       {@required this.protectionSpace,
-      @required this.error,
-      this.message,
-      this.serverCertificate})
+        @required this.error,
+        this.message,
+        this.serverCertificate})
       : assert(protectionSpace != null && error != null);
 }
 
@@ -665,9 +660,9 @@ class ClientCertResponse {
 
   ClientCertResponse(
       {this.certificatePath,
-      this.certificatePassword = "",
-      this.androidKeyStoreType = "PKCS12",
-      this.action = ClientCertResponseAction.CANCEL}) {
+        this.certificatePassword = "",
+        this.androidKeyStoreType = "PKCS12",
+        this.action = ClientCertResponseAction.CANCEL}) {
     if (this.action == ClientCertResponseAction.PROCEED)
       assert(certificatePath != null && certificatePath.isNotEmpty);
   }
@@ -746,14 +741,14 @@ class AndroidCacheMode {
 
   ///Use cached resources when they are available, even if they have expired. Otherwise load resources from the network.
   static const LOAD_CACHE_ELSE_NETWORK =
-      const AndroidCacheMode._internal(1);
+  const AndroidCacheMode._internal(1);
 
   ///Don't use the cache, load from the network.
   static const LOAD_NO_CACHE = const AndroidCacheMode._internal(2);
 
   ///Don't use the network, load from the cache.
   static const LOAD_CACHE_ONLY =
-      const AndroidCacheMode._internal(3);
+  const AndroidCacheMode._internal(3);
 
   bool operator ==(value) => value == _value;
 
@@ -791,19 +786,19 @@ class AndroidActionModeMenuItem {
 
   ///No menu items should be disabled.
   static const MENU_ITEM_NONE =
-      const AndroidActionModeMenuItem._internal(0);
+  const AndroidActionModeMenuItem._internal(0);
 
   ///Disable menu item "Share".
   static const MENU_ITEM_SHARE =
-      const AndroidActionModeMenuItem._internal(1);
+  const AndroidActionModeMenuItem._internal(1);
 
   ///Disable menu item "Web Search".
   static const MENU_ITEM_WEB_SEARCH =
-      const AndroidActionModeMenuItem._internal(2);
+  const AndroidActionModeMenuItem._internal(2);
 
   ///Disable all the action mode menu items for text processing.
   static const MENU_ITEM_PROCESS_TEXT =
-      const AndroidActionModeMenuItem._internal(4);
+  const AndroidActionModeMenuItem._internal(4);
 
   bool operator ==(value) => value == _value;
 
@@ -843,7 +838,7 @@ class AndroidForceDark {
 
   ///Enable force dark dependent on the state of the WebView parent view.
   static const FORCE_DARK_AUTO =
-      const AndroidForceDark._internal(1);
+  const AndroidForceDark._internal(1);
 
   ///Unconditionally enable force dark. In this mode WebView content will always be rendered so as to emulate a dark theme.
   static const FORCE_DARK_ON = const AndroidForceDark._internal(2);
@@ -870,14 +865,14 @@ class AndroidLayoutAlgorithm {
 
   ///NORMAL means no rendering changes. This is the recommended choice for maximum compatibility across different platforms and Android versions.
   static const NORMAL =
-      const AndroidLayoutAlgorithm._internal("NORMAL");
+  const AndroidLayoutAlgorithm._internal("NORMAL");
 
   ///TEXT_AUTOSIZING boosts font size of paragraphs based on heuristics to make the text readable when viewing a wide-viewport layout in the overview mode.
   ///It is recommended to enable zoom support [AndroidInAppWebViewOptions.supportZoom] when using this mode.
   ///
   ///**NOTE**: available on Android 19+.
   static const TEXT_AUTOSIZING =
-      const AndroidLayoutAlgorithm._internal("TEXT_AUTOSIZING");
+  const AndroidLayoutAlgorithm._internal("TEXT_AUTOSIZING");
 
   bool operator ==(value) => value == _value;
 
@@ -914,12 +909,12 @@ class AndroidMixedContentMode {
   ///In this mode, the WebView will allow a secure origin to load content from any other origin, even if that origin is insecure.
   ///This is the least secure mode of operation for the WebView, and where possible apps should not set this mode.
   static const MIXED_CONTENT_ALWAYS_ALLOW =
-      const AndroidMixedContentMode._internal(0);
+  const AndroidMixedContentMode._internal(0);
 
   ///In this mode, the WebView will not allow a secure origin to load content from an insecure origin.
   ///This is the preferred and most secure mode of operation for the WebView and apps are strongly advised to use this mode.
   static const MIXED_CONTENT_NEVER_ALLOW =
-      const AndroidMixedContentMode._internal(1);
+  const AndroidMixedContentMode._internal(1);
 
   ///In this mode, the WebView will attempt to be compatible with the approach of a modern web browser with regard to mixed content.
   ///Some insecure content may be allowed to be loaded by a secure origin and other types of content will be blocked.
@@ -927,7 +922,7 @@ class AndroidMixedContentMode {
   ///This mode is intended to be used by apps that are not in control of the content that they render but desire to operate in a reasonably secure environment.
   ///For highest security, apps are recommended to use [AndroidMixedContentMode.MIXED_CONTENT_NEVER_ALLOW].
   static const MIXED_CONTENT_COMPATIBILITY_MODE =
-      const AndroidMixedContentMode._internal(2);
+  const AndroidMixedContentMode._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -962,7 +957,7 @@ class IOSWKSelectionGranularity {
 
   ///Selection endpoints can be placed at any character boundary.
   static const CHARACTER =
-      const IOSWKSelectionGranularity._internal(1);
+  const IOSWKSelectionGranularity._internal(1);
 
   bool operator ==(value) => value == _value;
 
@@ -1003,34 +998,34 @@ class IOSWKDataDetectorTypes {
 
   ///Phone numbers are detected and turned into links.
   static const PHONE_NUMBER =
-      const IOSWKDataDetectorTypes._internal("PHONE_NUMBER");
+  const IOSWKDataDetectorTypes._internal("PHONE_NUMBER");
 
   ///URLs in text are detected and turned into links.
   static const LINK = const IOSWKDataDetectorTypes._internal("LINK");
 
   ///Addresses are detected and turned into links.
   static const ADDRESS =
-      const IOSWKDataDetectorTypes._internal("ADDRESS");
+  const IOSWKDataDetectorTypes._internal("ADDRESS");
 
   ///Dates and times that are in the future are detected and turned into links.
   static const CALENDAR_EVENT =
-      const IOSWKDataDetectorTypes._internal("CALENDAR_EVENT");
+  const IOSWKDataDetectorTypes._internal("CALENDAR_EVENT");
 
   ///Tracking numbers are detected and turned into links.
   static const TRACKING_NUMBER =
-      const IOSWKDataDetectorTypes._internal("TRACKING_NUMBER");
+  const IOSWKDataDetectorTypes._internal("TRACKING_NUMBER");
 
   ///Flight numbers are detected and turned into links.
   static const FLIGHT_NUMBER =
-      const IOSWKDataDetectorTypes._internal("FLIGHT_NUMBER");
+  const IOSWKDataDetectorTypes._internal("FLIGHT_NUMBER");
 
   ///Lookup suggestions are detected and turned into links.
   static const LOOKUP_SUGGESTION =
-      const IOSWKDataDetectorTypes._internal("LOOKUP_SUGGESTION");
+  const IOSWKDataDetectorTypes._internal("LOOKUP_SUGGESTION");
 
   ///Spotlight suggestions are detected and turned into links.
   static const SPOTLIGHT_SUGGESTION =
-      const IOSWKDataDetectorTypes._internal("SPOTLIGHT_SUGGESTION");
+  const IOSWKDataDetectorTypes._internal("SPOTLIGHT_SUGGESTION");
 
   ///All of the above data types are turned into links when detected. Choosing this value will automatically include any new detection type that is added.
   static const ALL = const IOSWKDataDetectorTypes._internal("ALL");
@@ -1096,14 +1091,14 @@ class UserPreferredContentMode {
 
   ///The recommended content mode for the current platform.
   static const RECOMMENDED =
-      const UserPreferredContentMode._internal(0);
+  const UserPreferredContentMode._internal(0);
 
   ///Represents content targeting mobile browsers.
   static const MOBILE = const UserPreferredContentMode._internal(1);
 
   ///Represents content targeting desktop browsers.
   static const DESKTOP =
-      const UserPreferredContentMode._internal(2);
+  const UserPreferredContentMode._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -1151,30 +1146,30 @@ class IOSUIModalPresentationStyle {
 
   ///A presentation style in which the presented view covers the screen.
   static const FULL_SCREEN =
-      const IOSUIModalPresentationStyle._internal(0);
+  const IOSUIModalPresentationStyle._internal(0);
 
   ///A presentation style that partially covers the underlying content.
   static const PAGE_SHEET =
-      const IOSUIModalPresentationStyle._internal(1);
+  const IOSUIModalPresentationStyle._internal(1);
 
   ///A presentation style that displays the content centered in the screen.
   static const FORM_SHEET =
-      const IOSUIModalPresentationStyle._internal(2);
+  const IOSUIModalPresentationStyle._internal(2);
 
   ///A presentation style where the content is displayed over another view controller’s content.
   static const CURRENT_CONTEXT =
-      const IOSUIModalPresentationStyle._internal(3);
+  const IOSUIModalPresentationStyle._internal(3);
 
   ///A custom view presentation style that is managed by a custom presentation controller and one or more custom animator objects.
   static const CUSTOM = const IOSUIModalPresentationStyle._internal(4);
 
   ///A view presentation style in which the presented view covers the screen.
   static const OVER_FULL_SCREEN =
-      const IOSUIModalPresentationStyle._internal(5);
+  const IOSUIModalPresentationStyle._internal(5);
 
   ///A presentation style where the content is displayed over another view controller’s content.
   static const OVER_CURRENT_CONTEXT =
-      const IOSUIModalPresentationStyle._internal(6);
+  const IOSUIModalPresentationStyle._internal(6);
 
   ///A presentation style where the content is displayed in a popover view.
   static const POPOVER = const IOSUIModalPresentationStyle._internal(7);
@@ -1186,7 +1181,7 @@ class IOSUIModalPresentationStyle {
   ///
   ///**NOTE**: available on iOS 13.0+.
   static const AUTOMATIC =
-      const IOSUIModalPresentationStyle._internal(9);
+  const IOSUIModalPresentationStyle._internal(9);
 
   bool operator ==(value) => value == _value;
 
@@ -1223,24 +1218,24 @@ class IOSUIModalTransitionStyle {
   ///When the view controller is presented, its view slides up from the bottom of the screen.
   ///On dismissal, the view slides back down. This is the default transition style.
   static const COVER_VERTICAL =
-      const IOSUIModalTransitionStyle._internal(0);
+  const IOSUIModalTransitionStyle._internal(0);
 
   ///When the view controller is presented, the current view initiates a horizontal 3D flip from right-to-left,
   ///resulting in the revealing of the new view as if it were on the back of the previous view.
   ///On dismissal, the flip occurs from left-to-right, returning to the original view.
   static const FLIP_HORIZONTAL =
-      const IOSUIModalTransitionStyle._internal(1);
+  const IOSUIModalTransitionStyle._internal(1);
 
   ///When the view controller is presented, the current view fades out while the new view fades in at the same time.
   ///On dismissal, a similar type of cross-fade is used to return to the original view.
   static const CROSS_DISSOLVE =
-      const IOSUIModalTransitionStyle._internal(2);
+  const IOSUIModalTransitionStyle._internal(2);
 
   ///When the view controller is presented, one corner of the current view curls up to reveal the presented view underneath.
   ///On dismissal, the curled up page unfurls itself back on top of the presented view.
   ///A view controller presented using this transition is itself prevented from presenting any additional view controllers.
   static const PARTIAL_CURL =
-      const IOSUIModalTransitionStyle._internal(3);
+  const IOSUIModalTransitionStyle._internal(3);
 
   bool operator ==(value) => value == _value;
 
@@ -1302,8 +1297,8 @@ class InAppWebViewGroupOptions {
 
   InAppWebViewGroupOptions(
       {this.crossPlatform,
-      this.android,
-      this.ios});
+        this.android,
+        this.ios});
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> options = {};
@@ -1337,9 +1332,9 @@ class InAppBrowserClassOptions {
 
   InAppBrowserClassOptions(
       {this.crossPlatform,
-      this.android,
-      this.ios,
-      this.inAppWebViewGroupOptions});
+        this.android,
+        this.ios,
+        this.inAppWebViewGroupOptions});
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> options = {};
@@ -1428,7 +1423,7 @@ class AjaxRequestEventType {
   const AjaxRequestEventType._internal(this._value);
   static AjaxRequestEventType fromValue(String value) {
     return (["loadstart", "load", "loadend", "progress", "error", "abort"]
-            .contains(value))
+        .contains(value))
         ? AjaxRequestEventType._internal(value)
         : null;
   }
@@ -1630,24 +1625,24 @@ class AjaxRequest {
 
   AjaxRequest(
       {this.data,
-      this.method,
-      this.url,
-      this.isAsync,
-      this.user,
-      this.password,
-      this.withCredentials,
-      this.headers,
-      this.readyState,
-      this.status,
-      this.responseURL,
-      this.responseType,
-      this.response,
-      this.responseText,
-      this.responseXML,
-      this.statusText,
-      this.responseHeaders,
-      this.event,
-      this.action = AjaxRequestAction.PROCEED});
+        this.method,
+        this.url,
+        this.isAsync,
+        this.user,
+        this.password,
+        this.withCredentials,
+        this.headers,
+        this.readyState,
+        this.status,
+        this.responseURL,
+        this.responseType,
+        this.response,
+        this.responseText,
+        this.responseXML,
+        this.statusText,
+        this.responseHeaders,
+        this.event,
+        this.action = AjaxRequestAction.PROCEED});
 
   Map<String, dynamic> toMap() {
     return {
@@ -1827,18 +1822,18 @@ class FetchRequest {
 
   FetchRequest(
       {this.url,
-      this.method,
-      this.headers,
-      this.body,
-      this.mode,
-      this.credentials,
-      this.cache,
-      this.redirect,
-      this.referrer,
-      this.referrerPolicy,
-      this.integrity,
-      this.keepalive,
-      this.action = FetchRequestAction.PROCEED});
+        this.method,
+        this.headers,
+        this.body,
+        this.mode,
+        this.credentials,
+        this.cache,
+        this.redirect,
+        this.referrer,
+        this.referrerPolicy,
+        this.integrity,
+        this.keepalive,
+        this.action = FetchRequestAction.PROCEED});
 
   Map<String, dynamic> toMap() {
     return {
@@ -1913,18 +1908,18 @@ class ContentBlockerTriggerResourceType {
   String toString() => _value;
 
   static const DOCUMENT =
-      const ContentBlockerTriggerResourceType._internal('document');
+  const ContentBlockerTriggerResourceType._internal('document');
   static const IMAGE =
-      const ContentBlockerTriggerResourceType._internal('image');
+  const ContentBlockerTriggerResourceType._internal('image');
   static const STYLE_SHEET =
-      const ContentBlockerTriggerResourceType._internal('style-sheet');
+  const ContentBlockerTriggerResourceType._internal('style-sheet');
   static const SCRIPT =
-      const ContentBlockerTriggerResourceType._internal('script');
+  const ContentBlockerTriggerResourceType._internal('script');
   static const FONT = const ContentBlockerTriggerResourceType._internal('font');
   static const MEDIA =
-      const ContentBlockerTriggerResourceType._internal('media');
+  const ContentBlockerTriggerResourceType._internal('media');
   static const SVG_DOCUMENT =
-      const ContentBlockerTriggerResourceType._internal('svg-document');
+  const ContentBlockerTriggerResourceType._internal('svg-document');
 
   ///Any untyped load
   static const RAW = const ContentBlockerTriggerResourceType._internal('raw');
@@ -1951,11 +1946,11 @@ class ContentBlockerTriggerLoadType {
 
   ///FIRST_PARTY is triggered only if the resource has the same scheme, domain, and port as the main page resource.
   static const FIRST_PARTY =
-      const ContentBlockerTriggerLoadType._internal('first-party');
+  const ContentBlockerTriggerLoadType._internal('first-party');
 
   ///THIRD_PARTY is triggered if the resource is not from the same domain as the main page resource.
   static const THIRD_PARTY =
-      const ContentBlockerTriggerLoadType._internal('third-party');
+  const ContentBlockerTriggerLoadType._internal('third-party');
 
   bool operator ==(value) => value == _value;
 
@@ -1984,11 +1979,11 @@ class ContentBlockerActionType {
   ///
   ///**NOTE**: on Android, JavaScript must be enabled.
   static const CSS_DISPLAY_NONE =
-      const ContentBlockerActionType._internal('css-display-none');
+  const ContentBlockerActionType._internal('css-display-none');
 
   ///Changes a URL from http to https. URLs with a specified (nondefault) port and links using other protocols are unaffected.
   static const MAKE_HTTPS =
-      const ContentBlockerActionType._internal('make-https');
+  const ContentBlockerActionType._internal('make-https');
 
   bool operator ==(value) => value == _value;
 
@@ -2035,7 +2030,7 @@ class PermissionRequestResponse {
 
   PermissionRequestResponse(
       {this.resources = const [],
-      this.action = PermissionRequestResponseAction.DENY});
+        this.action = PermissionRequestResponseAction.DENY});
 
   Map<String, dynamic> toMap() {
     return {"resources": resources, "action": action?.toValue()};
@@ -2195,7 +2190,7 @@ class IOSWKWebsiteDataType {
       "WKWebsiteDataTypeWebSQLDatabases",
       "WKWebsiteDataTypeIndexedDBDatabases",
       "WKWebsiteDataTypeServiceWorkerRegistrations"
-      ].contains(value))
+    ].contains(value))
         ? IOSWKWebsiteDataType._internal(value)
         : null;
   }
@@ -2297,13 +2292,13 @@ class IOSWKWebsiteDataRecord {
   }
 }
 
-///Class representing the [LongPressHitTestResult] type.
-class LongPressHitTestResultType {
+///Class representing the [InAppWebViewHitTestResult] type.
+class InAppWebViewHitTestResultType {
   final int _value;
-  const LongPressHitTestResultType._internal(this._value);
-  static LongPressHitTestResultType fromValue(int value) {
+  const InAppWebViewHitTestResultType._internal(this._value);
+  static InAppWebViewHitTestResultType fromValue(int value) {
     if (value != null && [0, 2, 3, 4, 5, 7, 8, 9].contains(value))
-      return LongPressHitTestResultType._internal(value);
+      return InAppWebViewHitTestResultType._internal(value);
     return null;
   }
 
@@ -2331,22 +2326,22 @@ class LongPressHitTestResultType {
     }
   }
 
-  ///Default [LongPressHitTestResult], where the target is unknown.
-  static const UNKNOWN_TYPE = const LongPressHitTestResultType._internal(0);
-  ///[LongPressHitTestResult] for hitting a phone number.
-  static const PHONE_TYPE = const LongPressHitTestResultType._internal(2);
-  ///[LongPressHitTestResult] for hitting a map address.
-  static const GEO_TYPE = const LongPressHitTestResultType._internal(3);
-  ///[LongPressHitTestResult] for hitting an email address.
-  static const EMAIL_TYPE = const LongPressHitTestResultType._internal(4);
-  ///[LongPressHitTestResult] for hitting an HTML::img tag.
-  static const IMAGE_TYPE = const LongPressHitTestResultType._internal(5);
-  ///[LongPressHitTestResult] for hitting a HTML::a tag with src=http.
-  static const SRC_ANCHOR_TYPE = const LongPressHitTestResultType._internal(7);
-  ///[LongPressHitTestResult] for hitting a HTML::a tag with src=http + HTML::img.
-  static const SRC_IMAGE_ANCHOR_TYPE = const LongPressHitTestResultType._internal(8);
-  ///[LongPressHitTestResult] for hitting an edit text area.
-  static const EDIT_TEXT_TYPE = const LongPressHitTestResultType._internal(9);
+  ///Default [InAppWebViewHitTestResult], where the target is unknown.
+  static const UNKNOWN_TYPE = const InAppWebViewHitTestResultType._internal(0);
+  ///[InAppWebViewHitTestResult] for hitting a phone number.
+  static const PHONE_TYPE = const InAppWebViewHitTestResultType._internal(2);
+  ///[InAppWebViewHitTestResult] for hitting a map address.
+  static const GEO_TYPE = const InAppWebViewHitTestResultType._internal(3);
+  ///[InAppWebViewHitTestResult] for hitting an email address.
+  static const EMAIL_TYPE = const InAppWebViewHitTestResultType._internal(4);
+  ///[InAppWebViewHitTestResult] for hitting an HTML::img tag.
+  static const IMAGE_TYPE = const InAppWebViewHitTestResultType._internal(5);
+  ///[InAppWebViewHitTestResult] for hitting a HTML::a tag with src=http.
+  static const SRC_ANCHOR_TYPE = const InAppWebViewHitTestResultType._internal(7);
+  ///[InAppWebViewHitTestResult] for hitting a HTML::a tag with src=http + HTML::img.
+  static const SRC_IMAGE_ANCHOR_TYPE = const InAppWebViewHitTestResultType._internal(8);
+  ///[InAppWebViewHitTestResult] for hitting an edit text area.
+  static const EDIT_TEXT_TYPE = const InAppWebViewHitTestResultType._internal(9);
 
   bool operator ==(value) => value == _value;
 
@@ -2354,12 +2349,12 @@ class LongPressHitTestResultType {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the hit result for hitting an HTML elements. Used by [onLongPressHitTestResult] event.
-class LongPressHitTestResult {
+///Class that represents the hit result for hitting an HTML elements.
+class InAppWebViewHitTestResult {
   ///The type of the hit test result.
-  LongPressHitTestResultType type;
+  InAppWebViewHitTestResultType type;
   ///Additional type-dependant information about the result.
   String extra;
 
-  LongPressHitTestResult({this.type, this.extra});
+  InAppWebViewHitTestResult({this.type, this.extra});
 }

@@ -13,8 +13,16 @@ import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ActionMode;
+import android.view.ContextMenu;
+import android.view.GestureDetector;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.ValueCallback;
@@ -22,6 +30,9 @@ import android.webkit.WebBackForwardList;
 import android.webkit.WebHistoryItem;
 import android.webkit.WebSettings;
 import android.webkit.WebStorage;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
 
@@ -31,6 +42,7 @@ import com.pichillilorenzo.flutter_inappwebview.ContentBlocker.ContentBlockerHan
 import com.pichillilorenzo.flutter_inappwebview.ContentBlocker.ContentBlockerTrigger;
 import com.pichillilorenzo.flutter_inappwebview.InAppBrowser.InAppBrowserActivity;
 import com.pichillilorenzo.flutter_inappwebview.JavaScriptBridgeInterface;
+import com.pichillilorenzo.flutter_inappwebview.R;
 import com.pichillilorenzo.flutter_inappwebview.Shared;
 import com.pichillilorenzo.flutter_inappwebview.Util;
 
@@ -64,6 +76,17 @@ final public class InAppWebView extends InputAwareWebView {
   int okHttpClientCacheSize = 10 * 1024 * 1024; // 10MB
   public ContentBlockerHandler contentBlockerHandler = new ContentBlockerHandler();
   public Pattern regexToCancelSubFramesLoadingCompiled;
+  public GestureDetector gestureDetector = null;
+  public LinearLayout floatingContextMenu = null;
+  public HashMap<String, Object> contextMenu = null;
+  public Handler headlessHandler = new Handler(Looper.getMainLooper());
+
+  public Runnable checkScrollStoppedTask;
+  public int initialPositionScrollStoppedTask;
+  public int newCheckScrollStoppedTask = 100; // ms
+
+  public Runnable checkContextMenuShouldBeClosedTask;
+  public int newCheckContextMenuShouldBeClosedTaskTask = 100; // ms
 
   static final String consoleLogJS = "(function(console) {" +
           "   var oldLogs = {" +
@@ -93,7 +116,7 @@ final public class InAppWebView extends InputAwareWebView {
 
   static final String printJS = "window.print = function() {" +
           "  window." + JavaScriptBridgeInterface.name + ".callHandler('onPrint', window.location.href);" +
-          "}";
+          "};";
 
   static final String platformReadyJS = "window.dispatchEvent(new Event('flutterInAppWebViewPlatformReady'));";
 
@@ -507,6 +530,68 @@ final public class InAppWebView extends InputAwareWebView {
           "  };" +
           "})(window.fetch);";
 
+  static final String isActiveElementInputEditableJS =
+          "var activeEl = document.activeElement;" +
+          "var nodeName = (activeEl != null) ? activeEl.nodeName.toLowerCase() : '';" +
+          "var isActiveElementInputEditable = activeEl != null && " +
+                  "(activeEl.nodeType == 1 && (nodeName == 'textarea' || (nodeName == 'input' && /^(?:text|email|number|search|tel|url|password)$/i.test(activeEl.type != null ? activeEl.type : 'text')))) && " +
+                  "!activeEl.disabled && !activeEl.readOnly;" +
+          "var isActiveElementEditable = isActiveElementInputEditable || (activeEl != null && activeEl.isContentEditable) || document.designMode === 'on';";
+
+  static final String getSelectedTextJS = "(function(){" +
+          "  var txt;" +
+          "  if (window.getSelection) {" +
+          "    txt = window.getSelection().toString();" +
+          "  } else if (window.document.getSelection) {" +
+          "    txt = window.document.getSelection().toString();" +
+          "  } else if (window.document.selection) {" +
+          "    txt = window.document.selection.createRange().text;" +
+          "  }" +
+          "  return txt;" +
+          "})();";
+
+  // android Workaround to hide context menu when selected text is empty
+  // and the document active element is not an input element.
+  static final String checkContextMenuShouldBeHiddenJS = "(function(){" +
+          "  var txt;" +
+          "  if (window.getSelection) {" +
+          "    txt = window.getSelection().toString();" +
+          "  } else if (window.document.getSelection) {" +
+          "    txt = window.document.getSelection().toString();" +
+          "  } else if (window.document.selection) {" +
+          "    txt = window.document.selection.createRange().text;" +
+          "  }" +
+             isActiveElementInputEditableJS +
+          "  return txt === '' && !isActiveElementEditable;" +
+          "})();";
+
+  // android Workaround to hide context menu when user emit a keydown event
+  static final String checkGlobalKeyDownEventToHideContextMenuJS = "(function(){" +
+          "  document.addEventListener('keydown', function(e) {" +
+          "    window." + JavaScriptBridgeInterface.name + "._hideContextMenu();" +
+          "  });" +
+          "})();";
+
+  // android Workaround to hide the Keyboard when the user click outside
+  // on something not focusable such as input or a textarea.
+  static final String androidKeyboardWorkaroundFocusoutEventJS = "(function(){" +
+          "  var isFocusin = false;" +
+          "  document.addEventListener('focusin', function(e) {" +
+          "    var nodeName = e.target.nodeName.toLowerCase();" +
+          "    var isInputButton = nodeName === 'input' && e.target.type != null && e.target.type === 'button';" +
+          "    isFocusin = (['a', 'area', 'button', 'details', 'iframe', 'select', 'summary'].indexOf(nodeName) >= 0 || isInputButton) ? false : true;" +
+          "  });" +
+          "  document.addEventListener('focusout', function(e) {" +
+          "    isFocusin = false;" +
+          "    setTimeout(function() {" +
+                 isActiveElementInputEditableJS +
+          "      if (!isFocusin && !isActiveElementEditable) {" +
+          "        window." + JavaScriptBridgeInterface.name + ".callHandler('androidKeyboardWorkaroundFocusoutEvent');" +
+          "      }" +
+          "    }, 300);" +
+          "  });" +
+          "})();";
+
   public InAppWebView(Context context) {
     super(context);
   }
@@ -519,7 +604,7 @@ final public class InAppWebView extends InputAwareWebView {
     super(context, attrs, defaultStyle);
   }
 
-  public InAppWebView(Context context, Object obj, Object id, InAppWebViewOptions options, View containerView) {
+  public InAppWebView(Context context, Object obj, Object id, InAppWebViewOptions options, HashMap<String, Object> contextMenu, View containerView) {
     super(context, containerView);
     if (obj instanceof InAppBrowserActivity)
       this.inAppBrowserActivity = (InAppBrowserActivity) obj;
@@ -528,7 +613,8 @@ final public class InAppWebView extends InputAwareWebView {
     this.channel = (this.inAppBrowserActivity != null) ? this.inAppBrowserActivity.channel : this.flutterWebView.channel;
     this.id = id;
     this.options = options;
-    //Shared.activity.registerForContextMenu(this);
+    this.contextMenu = contextMenu;
+    Shared.activity.registerForContextMenu(this);
   }
 
   @Override
@@ -684,12 +770,64 @@ final public class InAppWebView extends InputAwareWebView {
     setVerticalScrollBarEnabled(!options.disableVerticalScroll);
     setHorizontalScrollBarEnabled(!options.disableHorizontalScroll);
 
-    setOnTouchListener(new View.OnTouchListener() {
+    gestureDetector = new GestureDetector(this.getContext(), new GestureDetector.SimpleOnGestureListener() {
+      @Override
+      public boolean onSingleTapUp(MotionEvent ev) {
+        if (floatingContextMenu != null) {
+          hideContextMenu();
+        }
+        return super.onSingleTapUp(ev);
+      }
+    });
+
+    checkScrollStoppedTask = new Runnable() {
+      @Override
+      public void run() {
+        int newPosition = getScrollY();
+        if(initialPositionScrollStoppedTask - newPosition == 0){
+          // has stopped
+          onScrollStopped();
+        } else {
+          initialPositionScrollStoppedTask = getScrollY();
+          headlessHandler.postDelayed(checkScrollStoppedTask, newCheckScrollStoppedTask);
+        }
+      }
+    };
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+      checkContextMenuShouldBeClosedTask = new Runnable() {
+        @Override
+        public void run() {
+          if (floatingContextMenu != null) {
+            evaluateJavascript(checkContextMenuShouldBeHiddenJS, new ValueCallback<String>() {
+              @Override
+              public void onReceiveValue(String value) {
+                if (value == null || value.equals("true")) {
+                  if (floatingContextMenu != null) {
+                    hideContextMenu();
+                  }
+                } else {
+                  headlessHandler.postDelayed(checkContextMenuShouldBeClosedTask, newCheckContextMenuShouldBeClosedTaskTask);
+                }
+              }
+            });
+          }
+        }
+      };
+    }
+
+    setOnTouchListener(new OnTouchListener() {
       float m_downX;
       float m_downY;
 
       @Override
       public boolean onTouch(View v, MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
+
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+          checkScrollStoppedTask.run();
+        }
+
         if (options.disableHorizontalScroll && options.disableVerticalScroll) {
           return (event.getAction() == MotionEvent.ACTION_MOVE);
         }
@@ -738,13 +876,7 @@ final public class InAppWebView extends InputAwareWebView {
     });
   }
 
-  private Point lastTouch;
-
-  @Override
-  public boolean onTouchEvent(MotionEvent ev)    {
-    lastTouch = new Point((int) ev.getX(), (int) ev.getY()) ;
-    return super.onTouchEvent(ev);
-  }
+  private MotionEvent lastMotionEvent = null;
 
   public void setIncognito(boolean enabled) {
     WebSettings settings = getSettings();
@@ -883,8 +1015,7 @@ final public class InAppWebView extends InputAwareWebView {
   }
 
   public void takeScreenshot(final MethodChannel.Result result) {
-    Handler handler = new Handler(Looper.getMainLooper());
-    handler.post(new Runnable() {
+    headlessHandler.post(new Runnable() {
       @Override
       public void run() {
         int height = (int) (getContentHeight() * scale + 0.5);
@@ -1192,8 +1323,7 @@ final public class InAppWebView extends InputAwareWebView {
       scriptToInject = String.format(jsWrapper, jsonSourceString);
     }
     final String finalScriptToInject = scriptToInject;
-    Handler handler = new Handler(Looper.getMainLooper());
-    handler.post(new Runnable() {
+    headlessHandler.post(new Runnable() {
       @Override
       public void run() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
@@ -1269,6 +1399,11 @@ final public class InAppWebView extends InputAwareWebView {
     int x = (int) (l/scale);
     int y = (int) (t/scale);
 
+    if (floatingContextMenu != null) {
+      floatingContextMenu.setAlpha(0f);
+      floatingContextMenu.setVisibility(View.GONE);
+    }
+
     Map<String, Object> obj = new HashMap<>();
     if (inAppBrowserActivity != null)
       obj.put("uuid", inAppBrowserActivity.uuid);
@@ -1335,85 +1470,292 @@ final public class InAppWebView extends InputAwareWebView {
   @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
   public void printCurrentPage() {
     // Get a PrintManager instance
-    PrintManager printManager = (PrintManager) Shared.activity.getApplicationContext()
-            .getSystemService(Context.PRINT_SERVICE);
+    PrintManager printManager = (PrintManager) Shared.activity.getSystemService(Context.PRINT_SERVICE);
 
-    String jobName = getTitle() + " Document";
+    if (printManager != null) {
+      String jobName = getTitle() + " Document";
 
-    // Get a printCurrentPage adapter instance
-    PrintDocumentAdapter printAdapter = createPrintDocumentAdapter(jobName);
+      // Get a printCurrentPage adapter instance
+      PrintDocumentAdapter printAdapter = createPrintDocumentAdapter(jobName);
 
-    // Create a printCurrentPage job with name and adapter instance
-    printManager.print(jobName, printAdapter,
-            new PrintAttributes.Builder().build());
+      // Create a printCurrentPage job with name and adapter instance
+      printManager.print(jobName, printAdapter,
+              new PrintAttributes.Builder().build());
+    } else {
+      Log.e(LOG_TAG, "No PrintManager available");
+    }
   }
 
   public Float getUpdatedScale() {
     return scale;
   }
-/*
+
   @Override
   public void onCreateContextMenu(ContextMenu menu) {
-    Log.d(LOG_TAG, getHitTestResult().getType() + "");
-    String extra = getHitTestResult().getExtra();
-    //if (getHitTestResult().getType() == 7 || getHitTestResult().getType() == 5)
-    if (extra != null)
-      Log.d(LOG_TAG, extra);
-    Log.d(LOG_TAG, "\n\nonCreateContextMenu\n\n");
-
-    for(int i = 0; i < menu.size(); i++) {
-      Log.d(LOG_TAG, menu.getItem(i).toString());
-    }
+    super.onCreateContextMenu(menu);
+    sendOnCreateContextMenuEvent();
   }
 
-  private Integer mActionMode;
-  private CustomActionModeCallback mActionModeCallback;
+  private void sendOnCreateContextMenuEvent() {
+    HitTestResult hitTestResult = getHitTestResult();
+    Map<String, Object> hitTestResultMap = new HashMap<>();
+    hitTestResultMap.put("type", hitTestResult.getType());
+    hitTestResultMap.put("extra", hitTestResult.getExtra());
+
+    Map<String, Object> obj = new HashMap<>();
+    if (inAppBrowserActivity != null)
+      obj.put("uuid", inAppBrowserActivity.uuid);
+    obj.put("hitTestResult", hitTestResultMap);
+    channel.invokeMethod("onCreateContextMenu", obj);
+  }
+
+  private Point contextMenuPoint = new Point(0, 0);
+  private Point lastTouch = new Point(0, 0);
 
   @Override
-  public ActionMode startActionMode(ActionMode.Callback callback, int mode) {
-    Log.d(LOG_TAG, "startActionMode");
-    ViewParent parent = getParent();
-    if (parent == null || mActionMode != null) {
+  public boolean onTouchEvent(MotionEvent ev) {
+    lastTouch = new Point((int) ev.getX(), (int) ev.getY());
+    return super.onTouchEvent(ev);
+  }
+
+  @Override
+  public boolean dispatchTouchEvent(MotionEvent event) {
+    return super.dispatchTouchEvent(event);
+  }
+
+  @Override
+  public ActionMode startActionMode(ActionMode.Callback callback) {
+    return rebuildActionMode(super.startActionMode(callback), callback);
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.M)
+  @Override
+  public ActionMode startActionMode(ActionMode.Callback callback, int type) {
+    return rebuildActionMode(super.startActionMode(callback, type), callback);
+  }
+
+  public ActionMode rebuildActionMode(
+          final ActionMode actionMode,
+          final ActionMode.Callback callback
+  ) {
+    boolean hasBeenRemovedAndRebuilt = false;
+    if (floatingContextMenu != null) {
+      hideContextMenu();
+      hasBeenRemovedAndRebuilt = true;
+    }
+    if (actionMode == null) {
       return null;
     }
-    mActionModeCallback = new CustomActionModeCallback();
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      mActionMode = ActionMode.TYPE_FLOATING;
-      //return Shared.activity.getWindow().getDecorView().startActionMode(mActionModeCallback, mActionMode);
-      return parent.startActionModeForChild(this, mActionModeCallback, mActionMode);
-    } else {
-      return parent.startActionModeForChild(this, mActionModeCallback);
+
+    Menu actionMenu = actionMode.getMenu();
+    if (options.disableContextMenu) {
+      actionMenu.clear();
+      return actionMode;
+    }
+
+    floatingContextMenu = (LinearLayout) LayoutInflater.from(this.getContext())
+            .inflate(R.layout.floating_action_mode, this, false);
+    HorizontalScrollView horizontalScrollView = (HorizontalScrollView) floatingContextMenu.getChildAt(0);
+    LinearLayout menuItemListLayout = (LinearLayout) horizontalScrollView.getChildAt(0);
+
+    for (int i = 0; i < actionMenu.size(); i++) {
+      final MenuItem menuItem = actionMenu.getItem(i);
+      final int itemId = menuItem.getItemId();
+      final String itemTitle = menuItem.getTitle().toString();
+      TextView text = (TextView) LayoutInflater.from(this.getContext())
+              .inflate(R.layout.floating_action_mode_item, this, false);
+      text.setText(itemTitle);
+      text.setOnClickListener(new OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          hideContextMenu();
+          callback.onActionItemClicked(actionMode, menuItem);
+
+          Map<String, Object> obj = new HashMap<>();
+          if (inAppBrowserActivity != null)
+            obj.put("uuid", inAppBrowserActivity.uuid);
+          obj.put("androidId", itemId);
+          obj.put("iosId", null);
+          obj.put("title", itemTitle);
+          channel.invokeMethod("onContextMenuActionItemClicked", obj);
+        }
+      });
+      if (floatingContextMenu != null) {
+        menuItemListLayout.addView(text);
+      }
+    }
+
+    if (contextMenu != null) {
+      List<HashMap<String, Object>> customMenuItems = (List<HashMap<String, Object>>) contextMenu.get("menuItems");
+      if (customMenuItems != null) {
+        for (final HashMap<String, Object> menuItem : customMenuItems) {
+          final int itemId = (int) menuItem.get("androidId");
+          final String itemTitle = (String) menuItem.get("title");
+          TextView text = (TextView) LayoutInflater.from(this.getContext())
+                  .inflate(R.layout.floating_action_mode_item, this, false);
+          text.setText(itemTitle);
+          text.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+              // clearFocus();
+              hideContextMenu();
+
+              Map<String, Object> obj = new HashMap<>();
+              if (inAppBrowserActivity != null)
+                obj.put("uuid", inAppBrowserActivity.uuid);
+              obj.put("androidId", itemId);
+              obj.put("iosId", null);
+              obj.put("title", itemTitle);
+              channel.invokeMethod("onContextMenuActionItemClicked", obj);
+            }
+          });
+          if (floatingContextMenu != null) {
+            menuItemListLayout.addView(text);
+
+          }
+        }
+      }
+    }
+
+    final int x = (lastTouch != null) ? lastTouch.x : 0;
+    final int y = (lastTouch != null) ? lastTouch.y : 0;
+    contextMenuPoint = new Point(x, y);
+
+    if (floatingContextMenu != null) {
+      floatingContextMenu.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+
+        @Override
+        public void onGlobalLayout() {
+          if (floatingContextMenu != null) {
+            floatingContextMenu.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            if (getSettings().getJavaScriptEnabled()) {
+              onScrollStopped();
+            } else {
+              onFloatingActionGlobalLayout(x, y);
+            }
+          }
+        }
+      });
+      addView(floatingContextMenu, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, x, y));
+      if (hasBeenRemovedAndRebuilt) {
+        sendOnCreateContextMenuEvent();
+      }
+      if (checkContextMenuShouldBeClosedTask != null) {
+        checkContextMenuShouldBeClosedTask.run();
+      }
+    }
+    actionMenu.clear();
+
+    return actionMode;
+  }
+
+  public void onFloatingActionGlobalLayout(int x, int y) {
+    int maxWidth = getWidth();
+    int maxHeight = getHeight();
+    int width = floatingContextMenu.getWidth();
+    int height = floatingContextMenu.getHeight();
+    int curx = x - (width / 2);
+    if (curx < 0) {
+      curx = 0;
+    } else if (curx + width > maxWidth) {
+      curx = maxWidth - width;
+    }
+    // float size = 12 * scale;
+    float cury = y - (height * 1.5f);
+    if (cury < 0) {
+      cury = y + height;
+    }
+
+    updateViewLayout(
+            floatingContextMenu,
+            new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, curx, ((int) cury) + getScrollY())
+    );
+
+    headlessHandler.post(new Runnable() {
+      @Override
+      public void run() {
+        if (floatingContextMenu != null) {
+          floatingContextMenu.setVisibility(View.VISIBLE);
+          floatingContextMenu.animate().alpha(1f).setDuration(100).setListener(null);
+        }
+      }
+    });
+  }
+
+  public void hideContextMenu() {
+    removeView(floatingContextMenu);
+    floatingContextMenu = null;
+    onHideContextMenu();
+  }
+
+  public void onHideContextMenu() {
+    Map<String, Object> obj = new HashMap<>();
+    if (inAppBrowserActivity != null)
+      obj.put("uuid", inAppBrowserActivity.uuid);
+    channel.invokeMethod("onHideContextMenu", obj);
+  }
+
+  public void onScrollStopped() {
+    if (floatingContextMenu != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+      adjustFloatingContextMenuPosition();
     }
   }
 
-  private class CustomActionModeCallback implements ActionMode.Callback {
-
-    @Override
-    public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-
-      menu.add("ciao");
-
-      return true;
-    }
-
-    @Override
-    public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-      return false;
-    }
-
-    @Override
-    public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-      mode.finish();
-      return true;
-    }
-
-    // Called when the user exits the action mode
-    @Override
-    public void onDestroyActionMode(ActionMode mode) {
-      clearFocus();
-    }
+  @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+  public void adjustFloatingContextMenuPosition() {
+    evaluateJavascript("(function(){" +
+            "  var selection = window.getSelection();" +
+            "  var rangeY = null;" +
+            "  if (selection != null && selection.rangeCount > 0) {" +
+            "    var range = selection.getRangeAt(0);" +
+            "    var clientRect = range.getClientRects();" +
+            "    if (clientRect.length > 0) {" +
+            "      rangeY = clientRect[0].y;" +
+            "    } else if (document.activeElement) {" +
+            "      var boundingClientRect = document.activeElement.getBoundingClientRect();" +
+            "      rangeY = boundingClientRect.y;" +
+            "    }" +
+            "  }" +
+            "  return rangeY;" +
+            "})();", new ValueCallback<String>() {
+      @Override
+      public void onReceiveValue(String value) {
+        if (floatingContextMenu != null) {
+          if (value != null) {
+            int x = contextMenuPoint.x;
+            int y = (int) ((Float.parseFloat(value) * scale) + (floatingContextMenu.getHeight() / 3.5));
+            contextMenuPoint.y = y;
+            onFloatingActionGlobalLayout(x, y);
+          } else {
+            floatingContextMenu.setVisibility(View.VISIBLE);
+            floatingContextMenu.animate().alpha(1f).setDuration(100).setListener(null);
+          }
+        }
+      }
+    });
   }
-*/
+
+  @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+  public void getSelectedText(final ValueCallback<String> resultCallback) {
+    evaluateJavascript(getSelectedTextJS, new ValueCallback<String>() {
+      @Override
+      public void onReceiveValue(String value) {
+        value = (value != null) ? value.substring(1, value.length() - 1) : null;
+        resultCallback.onReceiveValue(value);
+      }
+    });
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+  public void getSelectedText(final MethodChannel.Result result) {
+    getSelectedText(new ValueCallback<String>() {
+      @Override
+      public void onReceiveValue(String value) {
+        result.success(value);
+      }
+    });
+  }
+
   @Override
   public void dispose() {
     super.dispose();
@@ -1421,6 +1763,7 @@ final public class InAppWebView extends InputAwareWebView {
 
   @Override
   public void destroy() {
+    headlessHandler.removeCallbacksAndMessages(null);
     super.destroy();
   }
 }

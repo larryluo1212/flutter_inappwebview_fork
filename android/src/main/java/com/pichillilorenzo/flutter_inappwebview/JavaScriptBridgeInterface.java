@@ -18,7 +18,7 @@ import io.flutter.plugin.common.MethodChannel;
 
 public class JavaScriptBridgeInterface {
   private static final String LOG_TAG = "JSBridgeInterface";
-  public static final String name = "flutter_inappbrowser";
+  public static final String name = "flutter_inappwebview";
   private FlutterWebView flutterWebView;
   private InAppBrowserActivity inAppBrowserActivity;
   public MethodChannel channel;
@@ -42,6 +42,21 @@ public class JavaScriptBridgeInterface {
     else if (obj instanceof FlutterWebView)
       this.flutterWebView = (FlutterWebView) obj;
     this.channel = (this.inAppBrowserActivity != null) ? this.inAppBrowserActivity.channel : this.flutterWebView.channel;
+  }
+
+  @JavascriptInterface
+  public void _hideContextMenu() {
+    final InAppWebView webView = (inAppBrowserActivity != null) ? inAppBrowserActivity.webView : flutterWebView.webView;
+
+    final Handler handler = new Handler(Looper.getMainLooper());
+    handler.post(new Runnable() {
+      @Override
+      public void run() {
+        if (webView != null && webView.floatingContextMenu != null) {
+          webView.hideContextMenu();
+        }
+      }
+    });
   }
 
   @JavascriptInterface

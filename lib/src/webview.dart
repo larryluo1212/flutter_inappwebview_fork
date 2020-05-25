@@ -1,3 +1,5 @@
+import 'package:flutter_inappwebview/src/context_menu.dart';
+
 import 'types.dart';
 import 'in_app_webview_controller.dart';
 
@@ -236,7 +238,13 @@ abstract class WebView {
   ///
   ///[hitTestResult] represents the hit result for hitting an HTML elements.
   final void Function(InAppWebViewController controller,
-      LongPressHitTestResult hitTestResult) onLongPressHitTestResult;
+      InAppWebViewHitTestResult hitTestResult) onLongPressHitTestResult;
+
+  ///Event fired when the current page has entered full screen mode.
+  final void Function(InAppWebViewController controller) onEnterFullscreen;
+
+  ///Event fired when the current page has exited full screen mode.
+  final void Function(InAppWebViewController controller) onExitFullscreen;
 
   ///Event fired when the webview notifies that a loading URL has been flagged by Safe Browsing.
   ///The default behavior is to show an interstitial to the user, with the reporting checkbox visible.
@@ -311,45 +319,52 @@ abstract class WebView {
   ///Initial options that will be used.
   final InAppWebViewGroupOptions initialOptions;
 
-  WebView(
-      {this.onWebViewCreated,
-        this.onLoadStart,
-        this.onSelectText,
-        this.onLoadStop,
-        this.onLoadError,
-        this.onLoadHttpError,
-        this.onProgressChanged,
-        this.onConsoleMessage,
-        this.shouldOverrideUrlLoading,
-        this.onLoadResource,
-        this.onScrollChanged,
-        this.onDownloadStart,
-        this.onLoadResourceCustomScheme,
-        this.onCreateWindow,
-        this.onJsAlert,
-        this.onJsConfirm,
-        this.onJsPrompt,
-        this.onReceivedHttpAuthRequest,
-        this.onReceivedServerTrustAuthRequest,
-        this.onReceivedClientCertRequest,
-        this.onFindResultReceived,
-        this.shouldInterceptAjaxRequest,
-        this.onAjaxReadyStateChange,
-        this.onAjaxProgress,
-        this.shouldInterceptFetchRequest,
-        this.onUpdateVisitedHistory,
-        this.onPrint,
-        this.onLongPressHitTestResult,
-        this.androidOnSafeBrowsingHit,
-        this.androidOnPermissionRequest,
-        this.androidOnGeolocationPermissionsShowPrompt,
-        this.androidOnGeolocationPermissionsHidePrompt,
-        this.iosOnWebContentProcessDidTerminate,
-        this.iosOnDidCommit,
-        this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
-        this.initialUrl,
-        this.initialFile,
-        this.initialData,
-        this.initialHeaders,
-        this.initialOptions});
+  ///Context menu which contains custom menu items to be shown when [ContextMenu] is presented.
+  final ContextMenu contextMenu;
+
+  WebView({
+    this.onWebViewCreated,
+    this.onLoadStart,
+    this.onSelectText,
+    this.onLoadStop,
+    this.onLoadError,
+    this.onLoadHttpError,
+    this.onProgressChanged,
+    this.onConsoleMessage,
+    this.shouldOverrideUrlLoading,
+    this.onLoadResource,
+    this.onScrollChanged,
+    this.onDownloadStart,
+    this.onLoadResourceCustomScheme,
+    this.onCreateWindow,
+    this.onJsAlert,
+    this.onJsConfirm,
+    this.onJsPrompt,
+    this.onReceivedHttpAuthRequest,
+    this.onReceivedServerTrustAuthRequest,
+    this.onReceivedClientCertRequest,
+    this.onFindResultReceived,
+    this.shouldInterceptAjaxRequest,
+    this.onAjaxReadyStateChange,
+    this.onAjaxProgress,
+    this.shouldInterceptFetchRequest,
+    this.onUpdateVisitedHistory,
+    this.onPrint,
+    this.onLongPressHitTestResult,
+    this.onEnterFullscreen,
+    this.onExitFullscreen,
+    this.androidOnSafeBrowsingHit,
+    this.androidOnPermissionRequest,
+    this.androidOnGeolocationPermissionsShowPrompt,
+    this.androidOnGeolocationPermissionsHidePrompt,
+    this.iosOnWebContentProcessDidTerminate,
+    this.iosOnDidCommit,
+    this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+    this.initialUrl,
+    this.initialFile,
+    this.initialData,
+    this.initialHeaders,
+    this.initialOptions,
+    this.contextMenu
+  });
 }

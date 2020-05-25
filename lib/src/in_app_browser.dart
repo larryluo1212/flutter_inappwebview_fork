@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'context_menu.dart';
 import 'in_app_webview_controller.dart';
 import 'webview_options.dart';
 
@@ -12,9 +13,14 @@ import 'types.dart';
 ///This class uses the native WebView of the platform.
 ///The [webViewController] field can be used to access the [InAppWebViewController] API.
 class InAppBrowser {
+  ///Browser's UUID
   String uuid;
+
+  ///Context menu used by the browser
+  ContextMenu contextMenu;
+
   Map<String, JavaScriptHandlerCallback> javaScriptHandlersMap =
-      HashMap<String, JavaScriptHandlerCallback>();
+  HashMap<String, JavaScriptHandlerCallback>();
   bool _isOpened = false;
   MethodChannel _channel;
   static const MethodChannel _sharedChannel = const MethodChannel('com.pichillilorenzo/flutter_inappbrowser');
@@ -57,8 +63,8 @@ class InAppBrowser {
   ///[options]: Options for the [InAppBrowser].
   Future<void> openUrl(
       {@required String url,
-      Map<String, String> headers = const {},
-      InAppBrowserClassOptions options}) async {
+        Map<String, String> headers = const {},
+        InAppBrowserClassOptions options}) async {
     assert(url != null && url.isNotEmpty);
     this.throwIsAlreadyOpened(message: 'Cannot open $url!');
 
@@ -67,6 +73,7 @@ class InAppBrowser {
     args.putIfAbsent('url', () => url);
     args.putIfAbsent('headers', () => headers);
     args.putIfAbsent('options', () => options?.toMap() ?? {});
+    args.putIfAbsent('contextMenu', () => contextMenu?.toMap() ?? {});
     await _sharedChannel.invokeMethod('openUrl', args);
   }
 
@@ -105,8 +112,8 @@ class InAppBrowser {
   ///[options]: Options for the [InAppBrowser].
   Future<void> openFile(
       {@required String assetFilePath,
-      Map<String, String> headers = const {},
-      InAppBrowserClassOptions options}) async {
+        Map<String, String> headers = const {},
+        InAppBrowserClassOptions options}) async {
     assert(assetFilePath != null && assetFilePath.isNotEmpty);
     this.throwIsAlreadyOpened(message: 'Cannot open $assetFilePath!');
 
@@ -117,6 +124,7 @@ class InAppBrowser {
     args.putIfAbsent('url', () => assetFilePath);
     args.putIfAbsent('headers', () => headers);
     args.putIfAbsent('options', () => options?.toMap() ?? {});
+    args.putIfAbsent('contextMenu', () => contextMenu?.toMap() ?? {});
     await _sharedChannel.invokeMethod('openFile', args);
   }
 
@@ -131,11 +139,11 @@ class InAppBrowser {
   ///The [options] parameter specifies the options for the [InAppBrowser].
   Future<void> openData(
       {@required String data,
-      String mimeType = "text/html",
-      String encoding = "utf8",
-      String baseUrl = "about:blank",
-      String androidHistoryUrl = "about:blank",
-      InAppBrowserClassOptions options}) async {
+        String mimeType = "text/html",
+        String encoding = "utf8",
+        String baseUrl = "about:blank",
+        String androidHistoryUrl = "about:blank",
+        InAppBrowserClassOptions options}) async {
     assert(data != null);
 
     Map<String, dynamic> args = <String, dynamic>{};
@@ -146,6 +154,7 @@ class InAppBrowser {
     args.putIfAbsent('encoding', () => encoding);
     args.putIfAbsent('baseUrl', () => baseUrl);
     args.putIfAbsent('historyUrl', () => androidHistoryUrl);
+    args.putIfAbsent('contextMenu', () => contextMenu?.toMap() ?? {});
     await _sharedChannel.invokeMethod('openData', args);
   }
 
@@ -201,9 +210,9 @@ class InAppBrowser {
     Map<String, dynamic> args = <String, dynamic>{};
 
     InAppBrowserClassOptions inAppBrowserClassOptions =
-        InAppBrowserClassOptions();
+    InAppBrowserClassOptions();
     Map<dynamic, dynamic> options =
-        await _channel.invokeMethod('getOptions', args);
+    await _channel.invokeMethod('getOptions', args);
     if (options != null) {
       options = options.cast<String, dynamic>();
       inAppBrowserClassOptions.crossPlatform =
@@ -215,7 +224,7 @@ class InAppBrowser {
         inAppBrowserClassOptions.android =
             AndroidInAppBrowserOptions.fromMap(options);
         inAppBrowserClassOptions
-                .inAppWebViewGroupOptions.android =
+            .inAppWebViewGroupOptions.android =
             AndroidInAppWebViewOptions.fromMap(options);
       } else if (Platform.isIOS) {
         inAppBrowserClassOptions.ios =
@@ -430,7 +439,13 @@ class InAppBrowser {
   ///Event fired when an HTML element of the webview has been clicked and held.
   ///
   ///[hitTestResult] represents the hit result for hitting an HTML elements.
-  void onLongPressHitTestResult(LongPressHitTestResult hitTestResult) {}
+  void onLongPressHitTestResult(InAppWebViewHitTestResult hitTestResult) {}
+
+  ///Event fired when the current page has entered full screen mode.
+  void onEnterFullscreen() {}
+
+  ///Event fired when the current page has exited full screen mode.
+  void onExitFullscreen() {}
 
   ///Event fired when the WebView notifies that a loading URL has been flagged by Safe Browsing.
   ///The default behavior is to show an interstitial to the user, with the reporting checkbox visible.

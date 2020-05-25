@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
+import android.util.Log;
 import android.webkit.ValueCallback;
 
 import com.pichillilorenzo.flutter_inappwebview.InAppWebView.FlutterWebViewFactory;
@@ -27,7 +28,8 @@ public class InAppWebViewFlutterPlugin implements FlutterPlugin, ActivityAware {
   public static MyCookieManager myCookieManager;
   public static CredentialDatabaseHandler credentialDatabaseHandler;
   public static MyWebStorage myWebStorage;
-  public static ValueCallback<Uri[]> uploadMessageArray;
+  public static ValueCallback<Uri> filePathCallbackLegacy;
+  public static ValueCallback<Uri[]> filePathCallback;
 
   public InAppWebViewFlutterPlugin() {}
 
@@ -44,7 +46,6 @@ public class InAppWebViewFlutterPlugin implements FlutterPlugin, ActivityAware {
     onAttachedToEngine(
             binding.getApplicationContext(), binding.getBinaryMessenger(), null, binding.getPlatformViewRegistry(), null);
   }
-
 
   private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger, Activity activity, PlatformViewRegistry platformViewRegistry, FlutterView flutterView) {
     Shared.applicationContext = applicationContext;
@@ -95,7 +96,8 @@ public class InAppWebViewFlutterPlugin implements FlutterPlugin, ActivityAware {
       inAppWebViewStatic.dispose();
       inAppWebViewStatic = null;
     }
-    uploadMessageArray = null;
+    filePathCallbackLegacy = null;
+    filePathCallback = null;
   }
 
   @Override

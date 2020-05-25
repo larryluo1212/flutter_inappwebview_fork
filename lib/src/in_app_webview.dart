@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 
+import 'context_menu.dart';
 import 'webview.dart';
 import 'types.dart';
 import 'in_app_webview_controller.dart';
@@ -17,7 +18,8 @@ const javaScriptHandlerForbiddenNames = [
   "onAjaxReadyStateChange",
   "onAjaxProgress",
   "shouldInterceptFetchRequest",
-  "onPrint"
+  "onPrint",
+  "androidKeyboardWorkaroundFocusoutEvent"
 ];
 
 ///Flutter Widget for adding an **inline native WebView** integrated in the flutter widget tree.
@@ -38,6 +40,7 @@ class InAppWebView extends StatefulWidget implements WebView {
     this.initialData,
     this.initialHeaders = const {},
     @required this.initialOptions,
+    this.contextMenu,
     this.onWebViewCreated,
     this.onLoadStart,
     this.onSelectText,
@@ -66,6 +69,8 @@ class InAppWebView extends StatefulWidget implements WebView {
     this.onUpdateVisitedHistory,
     this.onPrint,
     this.onLongPressHitTestResult,
+    this.onEnterFullscreen,
+    this.onExitFullscreen,
     this.androidOnSafeBrowsingHit,
     this.androidOnPermissionRequest,
     this.androidOnGeolocationPermissionsShowPrompt,
@@ -81,12 +86,12 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-      androidOnGeolocationPermissionsHidePrompt;
+  androidOnGeolocationPermissionsHidePrompt;
 
   @override
   final Future<GeolocationPermissionShowPromptResponse> Function(
-          InAppWebViewController controller, String origin)
-      androidOnGeolocationPermissionsShowPrompt;
+      InAppWebViewController controller, String origin)
+  androidOnGeolocationPermissionsShowPrompt;
 
   @override
   final Future<PermissionRequestResponse> Function(
@@ -114,30 +119,33 @@ class InAppWebView extends StatefulWidget implements WebView {
   final String initialUrl;
 
   @override
+  final ContextMenu contextMenu;
+
+  @override
   final Future<void> Function(InAppWebViewController controller) iosOnDidCommit;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-      iosOnDidReceiveServerRedirectForProvisionalNavigation;
+  iosOnDidReceiveServerRedirectForProvisionalNavigation;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-      iosOnWebContentProcessDidTerminate;
+  iosOnWebContentProcessDidTerminate;
 
   @override
   final Future<AjaxRequestAction> Function(
-          InAppWebViewController controller, AjaxRequest ajaxRequest)
-      onAjaxProgress;
+      InAppWebViewController controller, AjaxRequest ajaxRequest)
+  onAjaxProgress;
 
   @override
   final Future<AjaxRequestAction> Function(
-          InAppWebViewController controller, AjaxRequest ajaxRequest)
-      onAjaxReadyStateChange;
+      InAppWebViewController controller, AjaxRequest ajaxRequest)
+  onAjaxReadyStateChange;
 
   @override
   final void Function(
-          InAppWebViewController controller, ConsoleMessage consoleMessage)
-      onConsoleMessage;
+      InAppWebViewController controller, ConsoleMessage consoleMessage)
+  onConsoleMessage;
 
   @override
   final void Function(InAppWebViewController controller,
@@ -145,7 +153,7 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(InAppWebViewController controller, String url)
-      onDownloadStart;
+  onDownloadStart;
 
   @override
   final void Function(InAppWebViewController controller, int activeMatchOrdinal,
@@ -173,17 +181,17 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(
-          InAppWebViewController controller, LoadedResource resource)
-      onLoadResource;
+      InAppWebViewController controller, LoadedResource resource)
+  onLoadResource;
 
   @override
   final Future<CustomSchemeResponse> Function(
-          InAppWebViewController controller, String scheme, String url)
-      onLoadResourceCustomScheme;
+      InAppWebViewController controller, String scheme, String url)
+  onLoadResourceCustomScheme;
 
   @override
   final void Function(InAppWebViewController controller, String url)
-      onLoadStart;
+  onLoadStart;
 
   @override
   final void Function(InAppWebViewController controller, String url,String text)
@@ -194,57 +202,63 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(InAppWebViewController controller,
-      LongPressHitTestResult hitTestResult) onLongPressHitTestResult;
+      InAppWebViewHitTestResult hitTestResult) onLongPressHitTestResult;
 
   @override
   final void Function(InAppWebViewController controller, String url) onPrint;
 
   @override
   final void Function(InAppWebViewController controller, int progress)
-      onProgressChanged;
+  onProgressChanged;
 
   @override
   final Future<ClientCertResponse> Function(
-          InAppWebViewController controller, ClientCertChallenge challenge)
-      onReceivedClientCertRequest;
+      InAppWebViewController controller, ClientCertChallenge challenge)
+  onReceivedClientCertRequest;
 
   @override
   final Future<HttpAuthResponse> Function(
-          InAppWebViewController controller, HttpAuthChallenge challenge)
-      onReceivedHttpAuthRequest;
+      InAppWebViewController controller, HttpAuthChallenge challenge)
+  onReceivedHttpAuthRequest;
 
   @override
   final Future<ServerTrustAuthResponse> Function(
-          InAppWebViewController controller, ServerTrustChallenge challenge)
-      onReceivedServerTrustAuthRequest;
+      InAppWebViewController controller, ServerTrustChallenge challenge)
+  onReceivedServerTrustAuthRequest;
 
   @override
   final void Function(InAppWebViewController controller, int x, int y)
-      onScrollChanged;
+  onScrollChanged;
 
   @override
   final void Function(
-          InAppWebViewController controller, String url, bool androidIsReload)
-      onUpdateVisitedHistory;
+      InAppWebViewController controller, String url, bool androidIsReload)
+  onUpdateVisitedHistory;
 
   @override
   final void Function(InAppWebViewController controller) onWebViewCreated;
 
   @override
   final Future<AjaxRequest> Function(
-          InAppWebViewController controller, AjaxRequest ajaxRequest)
-      shouldInterceptAjaxRequest;
+      InAppWebViewController controller, AjaxRequest ajaxRequest)
+  shouldInterceptAjaxRequest;
 
   @override
   final Future<FetchRequest> Function(
-          InAppWebViewController controller, FetchRequest fetchRequest)
-      shouldInterceptFetchRequest;
+      InAppWebViewController controller, FetchRequest fetchRequest)
+  shouldInterceptFetchRequest;
 
   @override
   final Future<ShouldOverrideUrlLoadingAction> Function(
-          InAppWebViewController controller,
-          ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
-      shouldOverrideUrlLoading;
+      InAppWebViewController controller,
+      ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
+  shouldOverrideUrlLoading;
+
+  @override
+  final void Function(InAppWebViewController controller) onEnterFullscreen;
+
+  @override
+  final void Function(InAppWebViewController controller) onExitFullscreen;
 }
 
 class _InAppWebViewState extends State<InAppWebView> {
@@ -263,7 +277,8 @@ class _InAppWebViewState extends State<InAppWebView> {
           'initialFile': widget.initialFile,
           'initialData': widget.initialData?.toMap(),
           'initialHeaders': widget.initialHeaders,
-          'initialOptions': widget.initialOptions?.toMap() ?? {}
+          'initialOptions': widget.initialOptions?.toMap() ?? {},
+          'contextMenu': widget.contextMenu?.toMap() ?? {}
         },
         creationParamsCodec: const StandardMessageCodec(),
       );
@@ -296,7 +311,8 @@ class _InAppWebViewState extends State<InAppWebView> {
           'initialFile': widget.initialFile,
           'initialData': widget.initialData?.toMap(),
           'initialHeaders': widget.initialHeaders,
-          'initialOptions': widget.initialOptions?.toMap() ?? {}
+          'initialOptions': widget.initialOptions?.toMap() ?? {},
+          'contextMenu': widget.contextMenu?.toMap() ?? {}
         },
         creationParamsCodec: const StandardMessageCodec(),
       );

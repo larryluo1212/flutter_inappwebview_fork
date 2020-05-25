@@ -128,31 +128,35 @@ class InAppWebViewOptions
   ///Set to `true` to disable horizontal scroll. The default value is `false`.
   bool disableHorizontalScroll;
 
+  ///Set to `true` to disable context menu. The default value is `false`.
+  bool disableContextMenu;
+
   InAppWebViewOptions(
       {this.useShouldOverrideUrlLoading = false,
-      this.useOnLoadResource = false,
-      this.useOnDownloadStart = false,
-      this.clearCache = false,
-      this.userAgent = "",
-      this.applicationNameForUserAgent = "",
-      this.javaScriptEnabled = true,
-      this.debuggingEnabled = false,
-      this.javaScriptCanOpenWindowsAutomatically = false,
-      this.mediaPlaybackRequiresUserGesture = true,
-      this.minimumFontSize,
-      this.verticalScrollBarEnabled = true,
-      this.horizontalScrollBarEnabled = true,
-      this.resourceCustomSchemes = const [],
-      this.contentBlockers = const [],
-      this.preferredContentMode =
-          UserPreferredContentMode.RECOMMENDED,
-      this.useShouldInterceptAjaxRequest = false,
-      this.useShouldInterceptFetchRequest = false,
-      this.incognito = false,
-      this.cacheEnabled = true,
-      this.transparentBackground = false,
-      this.disableVerticalScroll = false,
-      this.disableHorizontalScroll = false}) {
+        this.useOnLoadResource = false,
+        this.useOnDownloadStart = false,
+        this.clearCache = false,
+        this.userAgent = "",
+        this.applicationNameForUserAgent = "",
+        this.javaScriptEnabled = true,
+        this.debuggingEnabled = false,
+        this.javaScriptCanOpenWindowsAutomatically = false,
+        this.mediaPlaybackRequiresUserGesture = true,
+        this.minimumFontSize,
+        this.verticalScrollBarEnabled = true,
+        this.horizontalScrollBarEnabled = true,
+        this.resourceCustomSchemes = const [],
+        this.contentBlockers = const [],
+        this.preferredContentMode =
+            UserPreferredContentMode.RECOMMENDED,
+        this.useShouldInterceptAjaxRequest = false,
+        this.useShouldInterceptFetchRequest = false,
+        this.incognito = false,
+        this.cacheEnabled = true,
+        this.transparentBackground = false,
+        this.disableVerticalScroll = false,
+        this.disableHorizontalScroll = false,
+        this.disableContextMenu = false}) {
     if (this.minimumFontSize == null)
       this.minimumFontSize = Platform.isAndroid ? 8 : 0;
     assert(!this.resourceCustomSchemes.contains("http") &&
@@ -176,7 +180,7 @@ class InAppWebViewOptions
       "javaScriptEnabled": javaScriptEnabled,
       "debuggingEnabled": debuggingEnabled,
       "javaScriptCanOpenWindowsAutomatically":
-          javaScriptCanOpenWindowsAutomatically,
+      javaScriptCanOpenWindowsAutomatically,
       "mediaPlaybackRequiresUserGesture": mediaPlaybackRequiresUserGesture,
       "verticalScrollBarEnabled": verticalScrollBarEnabled,
       "horizontalScrollBarEnabled": horizontalScrollBarEnabled,
@@ -189,7 +193,8 @@ class InAppWebViewOptions
       "cacheEnabled": cacheEnabled,
       "transparentBackground": transparentBackground,
       "disableVerticalScroll": disableVerticalScroll,
-      "disableHorizontalScroll": disableHorizontalScroll
+      "disableHorizontalScroll": disableHorizontalScroll,
+      "disableContextMenu": disableContextMenu
     };
   }
 
@@ -214,26 +219,27 @@ class InAppWebViewOptions
     options.javaScriptEnabled = map["javaScriptEnabled"];
     options.debuggingEnabled = map["debuggingEnabled"];
     options.javaScriptCanOpenWindowsAutomatically =
-        map["javaScriptCanOpenWindowsAutomatically"];
+    map["javaScriptCanOpenWindowsAutomatically"];
     options.mediaPlaybackRequiresUserGesture =
-        map["mediaPlaybackRequiresUserGesture"];
+    map["mediaPlaybackRequiresUserGesture"];
     options.verticalScrollBarEnabled = map["verticalScrollBarEnabled"];
     options.horizontalScrollBarEnabled = map["horizontalScrollBarEnabled"];
     options.resourceCustomSchemes =
-        List<String>.from(map["resourceCustomSchemes"] ?? []);
+    List<String>.from(map["resourceCustomSchemes"] ?? []);
     options.contentBlockers = contentBlockers;
     options.preferredContentMode =
         UserPreferredContentMode.fromValue(
             map["preferredContentMode"]);
     options.useShouldInterceptAjaxRequest =
-        map["useShouldInterceptAjaxRequest"];
+    map["useShouldInterceptAjaxRequest"];
     options.useShouldInterceptFetchRequest =
-        map["useShouldInterceptFetchRequest"];
+    map["useShouldInterceptFetchRequest"];
     options.incognito = map["incognito"];
     options.cacheEnabled = map["cacheEnabled"];
     options.transparentBackground = map["transparentBackground"];
     options.disableVerticalScroll = map["disableVerticalScroll"];
     options.disableHorizontalScroll = map["disableHorizontalScroll"];
+    options.disableContextMenu = map["disableContextMenu"];
     return options;
   }
 }
@@ -410,47 +416,47 @@ class AndroidInAppWebViewOptions
 
   AndroidInAppWebViewOptions(
       {this.textZoom = 100,
-      this.clearSessionCache = false,
-      this.builtInZoomControls = false,
-      this.displayZoomControls = false,
-      this.supportZoom = true,
-      this.databaseEnabled = false,
-      this.domStorageEnabled = true,
-      this.useWideViewPort = true,
-      this.safeBrowsingEnabled = true,
-      this.mixedContentMode,
-      this.allowContentAccess = true,
-      this.allowFileAccess = true,
-      this.allowFileAccessFromFileURLs = false,
-      this.allowUniversalAccessFromFileURLs = false,
-      this.appCachePath,
-      this.blockNetworkImage = false,
-      this.blockNetworkLoads = false,
-      this.cacheMode = AndroidCacheMode.LOAD_DEFAULT,
-      this.cursiveFontFamily = "cursive",
-      this.defaultFixedFontSize = 16,
-      this.defaultFontSize = 16,
-      this.defaultTextEncodingName = "UTF-8",
-      this.disabledActionModeMenuItems,
-      this.fantasyFontFamily = "fantasy",
-      this.fixedFontFamily = "monospace",
-      this.forceDark = AndroidForceDark.FORCE_DARK_OFF,
-      this.geolocationEnabled = true,
-      this.layoutAlgorithm,
-      this.loadWithOverviewMode = true,
-      this.loadsImagesAutomatically = true,
-      this.minimumLogicalFontSize = 8,
-      this.needInitialFocus = true,
-      this.offscreenPreRaster = false,
-      this.sansSerifFontFamily = "sans-serif",
-      this.serifFontFamily = "sans-serif",
-      this.standardFontFamily = "sans-serif",
-      this.saveFormData = true,
-      this.thirdPartyCookiesEnabled = true,
-      this.hardwareAcceleration = true,
-      this.initialScale = 0,
-      this.supportMultipleWindows = false,
-      this.regexToCancelSubFramesLoading});
+        this.clearSessionCache = false,
+        this.builtInZoomControls = false,
+        this.displayZoomControls = false,
+        this.supportZoom = true,
+        this.databaseEnabled = false,
+        this.domStorageEnabled = true,
+        this.useWideViewPort = true,
+        this.safeBrowsingEnabled = true,
+        this.mixedContentMode,
+        this.allowContentAccess = true,
+        this.allowFileAccess = true,
+        this.allowFileAccessFromFileURLs = false,
+        this.allowUniversalAccessFromFileURLs = false,
+        this.appCachePath,
+        this.blockNetworkImage = false,
+        this.blockNetworkLoads = false,
+        this.cacheMode = AndroidCacheMode.LOAD_DEFAULT,
+        this.cursiveFontFamily = "cursive",
+        this.defaultFixedFontSize = 16,
+        this.defaultFontSize = 16,
+        this.defaultTextEncodingName = "UTF-8",
+        this.disabledActionModeMenuItems,
+        this.fantasyFontFamily = "fantasy",
+        this.fixedFontFamily = "monospace",
+        this.forceDark = AndroidForceDark.FORCE_DARK_OFF,
+        this.geolocationEnabled = true,
+        this.layoutAlgorithm,
+        this.loadWithOverviewMode = true,
+        this.loadsImagesAutomatically = true,
+        this.minimumLogicalFontSize = 8,
+        this.needInitialFocus = true,
+        this.offscreenPreRaster = false,
+        this.sansSerifFontFamily = "sans-serif",
+        this.serifFontFamily = "sans-serif",
+        this.standardFontFamily = "sans-serif",
+        this.saveFormData = true,
+        this.thirdPartyCookiesEnabled = true,
+        this.hardwareAcceleration = true,
+        this.initialScale = 0,
+        this.supportMultipleWindows = false,
+        this.regexToCancelSubFramesLoading});
 
   @override
   Map<String, dynamic> toMap() {
@@ -517,7 +523,7 @@ class AndroidInAppWebViewOptions
     options.allowFileAccess = map["allowFileAccess"];
     options.allowFileAccessFromFileURLs = map["allowFileAccessFromFileURLs"];
     options.allowUniversalAccessFromFileURLs =
-        map["allowUniversalAccessFromFileURLs"];
+    map["allowUniversalAccessFromFileURLs"];
     options.appCachePath = map["appCachePath"];
     options.blockNetworkImage = map["blockNetworkImage"];
     options.blockNetworkLoads = map["blockNetworkLoads"];
@@ -663,27 +669,27 @@ class IOSInAppWebViewOptions
 
   IOSInAppWebViewOptions(
       {this.disallowOverScroll = false,
-      this.enableViewportScale = false,
-      this.suppressesIncrementalRendering = false,
-      this.allowsAirPlayForMediaPlayback = true,
-      this.allowsBackForwardNavigationGestures = true,
-      this.allowsLinkPreview = true,
-      this.ignoresViewportScaleLimits = false,
-      this.allowsInlineMediaPlayback = false,
-      this.allowsPictureInPictureMediaPlayback = true,
-      this.isFraudulentWebsiteWarningEnabled = true,
-      this.selectionGranularity = IOSWKSelectionGranularity.DYNAMIC,
-      this.dataDetectorTypes = const [IOSWKDataDetectorTypes.NONE],
-      this.sharedCookiesEnabled = false,
-      this.automaticallyAdjustsScrollIndicatorInsets = false,
-      this.accessibilityIgnoresInvertColors = false,
-      this.decelerationRate = IOSUIScrollViewDecelerationRate.NORMAL,
-      this.alwaysBounceVertical = false,
-      this.alwaysBounceHorizontal = false,
-      this.scrollsToTop = true,
-      this.isPagingEnabled = false,
-      this.maximumZoomScale = 1.0,
-      this.minimumZoomScale = 1.0});
+        this.enableViewportScale = false,
+        this.suppressesIncrementalRendering = false,
+        this.allowsAirPlayForMediaPlayback = true,
+        this.allowsBackForwardNavigationGestures = true,
+        this.allowsLinkPreview = true,
+        this.ignoresViewportScaleLimits = false,
+        this.allowsInlineMediaPlayback = false,
+        this.allowsPictureInPictureMediaPlayback = true,
+        this.isFraudulentWebsiteWarningEnabled = true,
+        this.selectionGranularity = IOSWKSelectionGranularity.DYNAMIC,
+        this.dataDetectorTypes = const [IOSWKDataDetectorTypes.NONE],
+        this.sharedCookiesEnabled = false,
+        this.automaticallyAdjustsScrollIndicatorInsets = false,
+        this.accessibilityIgnoresInvertColors = false,
+        this.decelerationRate = IOSUIScrollViewDecelerationRate.NORMAL,
+        this.alwaysBounceVertical = false,
+        this.alwaysBounceHorizontal = false,
+        this.scrollsToTop = true,
+        this.isPagingEnabled = false,
+        this.maximumZoomScale = 1.0,
+        this.minimumZoomScale = 1.0});
 
   @override
   Map<String, dynamic> toMap() {
@@ -698,12 +704,12 @@ class IOSInAppWebViewOptions
       "suppressesIncrementalRendering": suppressesIncrementalRendering,
       "allowsAirPlayForMediaPlayback": allowsAirPlayForMediaPlayback,
       "allowsBackForwardNavigationGestures":
-          allowsBackForwardNavigationGestures,
+      allowsBackForwardNavigationGestures,
       "allowsLinkPreview": allowsLinkPreview,
       "ignoresViewportScaleLimits": ignoresViewportScaleLimits,
       "allowsInlineMediaPlayback": allowsInlineMediaPlayback,
       "allowsPictureInPictureMediaPlayback":
-          allowsPictureInPictureMediaPlayback,
+      allowsPictureInPictureMediaPlayback,
       "isFraudulentWebsiteWarningEnabled": isFraudulentWebsiteWarningEnabled,
       "selectionGranularity": selectionGranularity.toValue(),
       "dataDetectorTypes": dataDetectorTypesList,
@@ -723,7 +729,7 @@ class IOSInAppWebViewOptions
   static IOSInAppWebViewOptions fromMap(Map<String, dynamic> map) {
     List<IOSWKDataDetectorTypes> dataDetectorTypes = [];
     List<String> dataDetectorTypesList =
-        List<String>.from(map["dataDetectorTypes"] ?? []);
+    List<String>.from(map["dataDetectorTypes"] ?? []);
     dataDetectorTypesList.forEach((dataDetectorType) {
       dataDetectorTypes
           .add(IOSWKDataDetectorTypes.fromValue(dataDetectorType));
@@ -733,18 +739,18 @@ class IOSInAppWebViewOptions
     options.disallowOverScroll = map["disallowOverScroll"];
     options.enableViewportScale = map["enableViewportScale"];
     options.suppressesIncrementalRendering =
-        map["suppressesIncrementalRendering"];
+    map["suppressesIncrementalRendering"];
     options.allowsAirPlayForMediaPlayback =
-        map["allowsAirPlayForMediaPlayback"];
+    map["allowsAirPlayForMediaPlayback"];
     options.allowsBackForwardNavigationGestures =
-        map["allowsBackForwardNavigationGestures"];
+    map["allowsBackForwardNavigationGestures"];
     options.allowsLinkPreview = map["allowsLinkPreview"];
     options.ignoresViewportScaleLimits = map["ignoresViewportScaleLimits"];
     options.allowsInlineMediaPlayback = map["allowsInlineMediaPlayback"];
     options.allowsPictureInPictureMediaPlayback =
-        map["allowsPictureInPictureMediaPlayback"];
+    map["allowsPictureInPictureMediaPlayback"];
     options.isFraudulentWebsiteWarningEnabled =
-        map["isFraudulentWebsiteWarningEnabled"];
+    map["isFraudulentWebsiteWarningEnabled"];
     options.selectionGranularity =
         IOSWKSelectionGranularity.fromValue(
             map["selectionGranularity"]);
@@ -781,9 +787,9 @@ class InAppBrowserOptions
 
   InAppBrowserOptions(
       {this.hidden = false,
-      this.toolbarTop = true,
-      this.toolbarTopBackgroundColor = "",
-      this.hideUrlBar = false});
+        this.toolbarTop = true,
+        this.toolbarTopBackgroundColor = "",
+        this.hideUrlBar = false});
 
   @override
   Map<String, dynamic> toMap() {
@@ -821,9 +827,9 @@ class AndroidInAppBrowserOptions implements BrowserOptions, AndroidOptions {
 
   AndroidInAppBrowserOptions(
       {this.hideTitleBar = true,
-      this.toolbarTopFixedTitle = "",
-      this.closeOnCannotGoBack = true,
-      this.progressBar = true});
+        this.toolbarTopFixedTitle = "",
+        this.closeOnCannotGoBack = true,
+        this.progressBar = true});
 
   @override
   Map<String, dynamic> toMap() {
@@ -873,13 +879,13 @@ class IOSInAppBrowserOptions implements BrowserOptions, IosOptions {
 
   IOSInAppBrowserOptions(
       {this.toolbarBottom = true,
-      this.toolbarBottomBackgroundColor = "",
-      this.toolbarBottomTranslucent = true,
-      this.closeButtonCaption = "",
-      this.closeButtonColor = "",
-      this.presentationStyle = IOSUIModalPresentationStyle.FULL_SCREEN,
-      this.transitionStyle = IOSUIModalTransitionStyle.COVER_VERTICAL,
-      this.spinner = true});
+        this.toolbarBottomBackgroundColor = "",
+        this.toolbarBottomTranslucent = true,
+        this.closeButtonCaption = "",
+        this.closeButtonColor = "",
+        this.presentationStyle = IOSUIModalPresentationStyle.FULL_SCREEN,
+        this.transitionStyle = IOSUIModalTransitionStyle.COVER_VERTICAL,
+        this.spinner = true});
 
   @override
   Map<String, dynamic> toMap() {
@@ -941,12 +947,12 @@ class AndroidChromeCustomTabsOptions
 
   AndroidChromeCustomTabsOptions(
       {this.addDefaultShareMenuItem = true,
-      this.showTitle = true,
-      this.toolbarBackgroundColor = "",
-      this.enableUrlBarHiding = false,
-      this.instantAppsEnabled = false,
-      this.packageName,
-      this.keepAliveEnabled = false});
+        this.showTitle = true,
+        this.toolbarBackgroundColor = "",
+        this.enableUrlBarHiding = false,
+        this.instantAppsEnabled = false,
+        this.packageName,
+        this.keepAliveEnabled = false});
 
   @override
   Map<String, dynamic> toMap() {
@@ -963,7 +969,7 @@ class AndroidChromeCustomTabsOptions
 
   static AndroidChromeCustomTabsOptions fromMap(Map<String, dynamic> map) {
     AndroidChromeCustomTabsOptions options =
-        new AndroidChromeCustomTabsOptions();
+    new AndroidChromeCustomTabsOptions();
     options.addDefaultShareMenuItem = map["addDefaultShareMenuItem"];
     options.showTitle = map["showTitle"];
     options.toolbarBackgroundColor = map["toolbarBackgroundColor"];
@@ -1006,12 +1012,12 @@ class IOSSafariOptions implements ChromeSafariBrowserOptions, IosOptions {
 
   IOSSafariOptions(
       {this.entersReaderIfAvailable = false,
-      this.barCollapsingEnabled = false,
-      this.dismissButtonStyle = IOSSafariDismissButtonStyle.DONE,
-      this.preferredBarTintColor = "",
-      this.preferredControlTintColor = "",
-      this.presentationStyle = IOSUIModalPresentationStyle.FULL_SCREEN,
-      this.transitionStyle = IOSUIModalTransitionStyle.COVER_VERTICAL});
+        this.barCollapsingEnabled = false,
+        this.dismissButtonStyle = IOSSafariDismissButtonStyle.DONE,
+        this.preferredBarTintColor = "",
+        this.preferredControlTintColor = "",
+        this.presentationStyle = IOSUIModalPresentationStyle.FULL_SCREEN,
+        this.transitionStyle = IOSUIModalTransitionStyle.COVER_VERTICAL});
 
   @override
   Map<String, dynamic> toMap() {

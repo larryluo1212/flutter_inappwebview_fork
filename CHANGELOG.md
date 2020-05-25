@@ -1,8 +1,35 @@
+## 3.3.0
+
+- Updated Android context menu workaround
+- Calling `onCreateContextMenu` event on iOS also when the context menu is disabled in order to have the same effect as Android
+- Added Android keyboard workaround to hide the keyboard when clicking other HTML elements, losing the focus on the previous input
+- Added `onEnterFullscreen`, `onExitFullscreen` webview events [#275](https://github.com/pichillilorenzo/flutter_inappwebview/issues/275)
+- Added Android support to use camera on HTML inputs that requires it, such as `<input type="file" accept="image/*" capture>` [#353](https://github.com/pichillilorenzo/flutter_inappwebview/issues/353)
+- Fixed `Print preview is not working? java.lang.IllegalStateException: Can print only from an activity` [#128](https://github.com/pichillilorenzo/flutter_inappwebview/issues/128)
+- Fixed `onJsAlert`, `onJsConfirm`, `onJsPrompt` for `InAppBrowser` on Android
+- Fixed `InAppBrowser.openWithSystemBrowser crash on iOS` [#358](https://github.com/pichillilorenzo/flutter_inappwebview/issues/358)
+
+## 3.2.0
+
+- Added `ContextMenu` and `ContextMenuItem` classes [#235](https://github.com/pichillilorenzo/flutter_inappwebview/issues/235)
+- Added `onCreateContextMenu`, `onHideContextMenu`, `onContextMenuActionItemClicked` context menu events
+- Added `contextMenu` to WebView
+- Added `disableContextMenu` WebView option
+- Added `getSelectedText`, `getHitTestResult` methods to WebView Controller
+- Fixed `Confirmation dialog (onbeforeunload) displayed after popped from webview page` [#337](https://github.com/pichillilorenzo/flutter_inappwebview/issues/337)
+- Fixed `CookieManager.setCookie` `expiresDate` option
+- Fixed `Scrolling not smooth on iOS` [#341](https://github.com/pichillilorenzo/flutter_inappwebview/issues/341)
+
+### BREAKING CHANGES
+
+- Renamed `LongPressHitTestResult` to `InAppWebViewHitTestResult`.
+- Renamed `LongPressHitTestResultType` to `InAppWebViewHitTestResultType`.
+
 ## 3.1.0
 
 - Added `HeadlessInAppWebView` class to be able to use WebView in headless mode
 - Added `close`, `addMenuItem`, `addMenuItems` methods to `ChromeSafariBrowser`
-- Added `ChromeSafariBrowserMenuItem` class in order to create custom menu item for `ChromeSafariBrowser`.
+- Added `ChromeSafariBrowserMenuItem` class in order to create custom menu item for `ChromeSafariBrowser`
 - Fixed `InAppWebView.channel` null when used by `InAppBrowserActivity` on android
 - Fixed iOS presentationStyle affecting only dismiss animation [#305](https://github.com/pichillilorenzo/flutter_inappwebview/issues/305)
 

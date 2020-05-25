@@ -4,13 +4,12 @@
 //
 //  Created by Lorenzo on 21/10/18.
 //
-
 import Foundation
 import WebKit
 
 @objcMembers
 public class InAppWebViewOptions: Options {
-    
+
     var useShouldOverrideUrlLoading = false
     var useOnLoadResource = false
     var useOnDownloadStart = false
@@ -33,6 +32,7 @@ public class InAppWebViewOptions: Options {
     var transparentBackground = false
     var disableVerticalScroll = false
     var disableHorizontalScroll = false
+    var disableContextMenu = false
 
     var disallowOverScroll = false
     var enableViewportScale = false
@@ -57,9 +57,9 @@ public class InAppWebViewOptions: Options {
     var isPagingEnabled = false
     var maximumZoomScale = 1.0
     var minimumZoomScale = 1.0
-    
+
     override init(){
         super.init()
     }
-    
+
 }
