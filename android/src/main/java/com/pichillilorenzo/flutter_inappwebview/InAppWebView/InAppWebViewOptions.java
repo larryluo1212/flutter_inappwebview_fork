@@ -2,20 +2,20 @@ package com.pichillilorenzo.flutter_inappwebview.InAppWebView;
 
 import android.os.Build;
 import android.util.Log;
+import android.view.View;
 import android.webkit.WebSettings;
 
-import com.pichillilorenzo.flutter_inappwebview.ChromeCustomTabs.ChromeCustomTabsOptions;
 import com.pichillilorenzo.flutter_inappwebview.Options;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static android.webkit.WebSettings.LayoutAlgorithm.NARROW_COLUMNS;
 import static android.webkit.WebSettings.LayoutAlgorithm.NORMAL;
 
-public class InAppWebViewOptions implements Options {
+public class InAppWebViewOptions implements Options<InAppWebView> {
 
   public static final String LOG_TAG = "InAppWebViewOptions";
 
@@ -86,9 +86,19 @@ public class InAppWebViewOptions implements Options {
   public Boolean hardwareAcceleration = true;
   public Boolean supportMultipleWindows = false;
   public String regexToCancelSubFramesLoading;
+  public Integer overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS;
+  public Boolean networkAvailable = null;
+  public Integer scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY;
+  public Integer verticalScrollbarPosition = View.SCROLLBAR_POSITION_DEFAULT;
+  public Integer scrollBarDefaultDelayBeforeFade = null;
+  public Boolean scrollbarFadingEnabled = true;
+  public Integer scrollBarFadeDuration = null;
+  public Map<String, Object> rendererPriorityPolicy = new HashMap<>();
+  public Boolean useShouldInterceptRequest = false;
+  public Boolean useOnRenderProcessGone = false;
 
   @Override
-  public InAppWebViewOptions parse(HashMap<String, Object> options) {
+  public InAppWebViewOptions parse(Map<String, Object> options) {
     for (Map.Entry<String, Object> pair : options.entrySet()) {
       String key = pair.getKey();
       Object value = pair.getValue();
@@ -295,6 +305,36 @@ public class InAppWebViewOptions implements Options {
         case "regexToCancelSubFramesLoading":
           regexToCancelSubFramesLoading = (String) value;
           break;
+        case "overScrollMode":
+          overScrollMode = (Integer) value;
+          break;
+        case "networkAvailable":
+          networkAvailable = (Boolean) value;
+          break;
+        case "scrollBarStyle":
+          scrollBarStyle = (Integer) value;
+          break;
+        case "verticalScrollbarPosition":
+          verticalScrollbarPosition = (Integer) value;
+          break;
+        case "scrollBarDefaultDelayBeforeFade":
+          scrollBarDefaultDelayBeforeFade = (Integer) value;
+          break;
+        case "scrollbarFadingEnabled":
+          scrollbarFadingEnabled = (Boolean) value;
+          break;
+        case "scrollBarFadeDuration":
+          scrollBarFadeDuration = (Integer) value;
+          break;
+        case "rendererPriorityPolicy":
+          rendererPriorityPolicy = (Map<String, Object>) value;
+          break;
+        case "useShouldInterceptRequest":
+          useShouldInterceptRequest = (Boolean) value;
+          break;
+        case "useOnRenderProcessGone":
+          useOnRenderProcessGone = (Boolean) value;
+          break;
       }
     }
 
@@ -302,8 +342,8 @@ public class InAppWebViewOptions implements Options {
   }
 
   @Override
-  public HashMap<String, Object> getHashMap() {
-    HashMap<String, Object> options = new HashMap<>();
+  public Map<String, Object> toMap() {
+    Map<String, Object> options = new HashMap<>();
     options.put("useShouldOverrideUrlLoading", useShouldOverrideUrlLoading);
     options.put("useOnLoadResource", useOnLoadResource);
     options.put("useOnDownloadStart", useOnDownloadStart);
@@ -370,12 +410,96 @@ public class InAppWebViewOptions implements Options {
     options.put("hardwareAcceleration", hardwareAcceleration);
     options.put("supportMultipleWindows", supportMultipleWindows);
     options.put("regexToCancelSubFramesLoading", regexToCancelSubFramesLoading);
+    options.put("overScrollMode", overScrollMode);
+    options.put("networkAvailable", networkAvailable);
+    options.put("scrollBarStyle", scrollBarStyle);
+    options.put("verticalScrollbarPosition", verticalScrollbarPosition);
+    options.put("scrollBarDefaultDelayBeforeFade", scrollBarDefaultDelayBeforeFade);
+    options.put("scrollbarFadingEnabled", scrollbarFadingEnabled);
+    options.put("scrollBarFadeDuration", scrollBarFadeDuration);
+    options.put("rendererPriorityPolicy", rendererPriorityPolicy);
+    options.put("useShouldInterceptRequest", useShouldInterceptRequest);
+    options.put("useOnRenderProcessGone", useOnRenderProcessGone);
     return options;
+  }
+
+  @Override
+  public Map<String, Object> getRealOptions(InAppWebView webView) {
+    Map<String, Object> realOptions = toMap();
+    if (webView != null) {
+      WebSettings settings = webView.getSettings();
+      realOptions.put("userAgent", settings.getUserAgentString());
+      realOptions.put("javaScriptEnabled", settings.getJavaScriptEnabled());
+      realOptions.put("javaScriptCanOpenWindowsAutomatically", settings.getJavaScriptCanOpenWindowsAutomatically());
+      realOptions.put("mediaPlaybackRequiresUserGesture", settings.getMediaPlaybackRequiresUserGesture());
+      realOptions.put("minimumFontSize", settings.getMinimumFontSize());
+      realOptions.put("verticalScrollBarEnabled", webView.isVerticalScrollBarEnabled());
+      realOptions.put("horizontalScrollBarEnabled", webView.isHorizontalScrollBarEnabled());
+      realOptions.put("textZoom", settings.getTextZoom());
+      realOptions.put("builtInZoomControls", settings.getBuiltInZoomControls());
+      realOptions.put("supportZoom", settings.supportZoom());
+      realOptions.put("displayZoomControls", settings.getDisplayZoomControls());
+      realOptions.put("databaseEnabled", settings.getDatabaseEnabled());
+      realOptions.put("domStorageEnabled", settings.getDomStorageEnabled());
+      realOptions.put("useWideViewPort", settings.getUseWideViewPort());
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        realOptions.put("safeBrowsingEnabled", settings.getSafeBrowsingEnabled());
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        realOptions.put("mixedContentMode", settings.getMixedContentMode());
+      }
+      realOptions.put("allowContentAccess", settings.getAllowContentAccess());
+      realOptions.put("allowFileAccess", settings.getAllowFileAccess());
+      realOptions.put("allowFileAccessFromFileURLs", settings.getAllowFileAccessFromFileURLs());
+      realOptions.put("allowUniversalAccessFromFileURLs", settings.getAllowUniversalAccessFromFileURLs());
+      realOptions.put("blockNetworkImage", settings.getBlockNetworkImage());
+      realOptions.put("blockNetworkLoads", settings.getBlockNetworkLoads());
+      realOptions.put("cacheMode", settings.getCacheMode());
+      realOptions.put("cursiveFontFamily", settings.getCursiveFontFamily());
+      realOptions.put("defaultFixedFontSize", settings.getDefaultFixedFontSize());
+      realOptions.put("defaultFontSize", settings.getDefaultFontSize());
+      realOptions.put("defaultTextEncodingName", settings.getDefaultTextEncodingName());
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        realOptions.put("disabledActionModeMenuItems", settings.getDisabledActionModeMenuItems());
+      }
+      realOptions.put("fantasyFontFamily", settings.getFantasyFontFamily());
+      realOptions.put("fixedFontFamily", settings.getFixedFontFamily());
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        realOptions.put("forceDark", settings.getForceDark());
+      }
+      realOptions.put("layoutAlgorithm", settings.getLayoutAlgorithm().name());
+      realOptions.put("loadWithOverviewMode", settings.getLoadWithOverviewMode());
+      realOptions.put("loadsImagesAutomatically", settings.getLoadsImagesAutomatically());
+      realOptions.put("minimumLogicalFontSize", settings.getMinimumLogicalFontSize());
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        realOptions.put("offscreenPreRaster", settings.getOffscreenPreRaster());
+      }
+      realOptions.put("sansSerifFontFamily", settings.getSansSerifFontFamily());
+      realOptions.put("serifFontFamily", settings.getSerifFontFamily());
+      realOptions.put("standardFontFamily", settings.getStandardFontFamily());
+      realOptions.put("saveFormData", settings.getSaveFormData());
+      realOptions.put("supportMultipleWindows", settings.supportMultipleWindows());
+      realOptions.put("overScrollMode", webView.getOverScrollMode());
+      realOptions.put("scrollBarStyle", webView.getScrollBarStyle());
+      realOptions.put("verticalScrollbarPosition", webView.getVerticalScrollbarPosition());
+      realOptions.put("scrollBarDefaultDelayBeforeFade", webView.getScrollBarDefaultDelayBeforeFade());
+      realOptions.put("scrollbarFadingEnabled", webView.isScrollbarFadingEnabled());
+      realOptions.put("scrollBarFadeDuration", webView.getScrollBarFadeDuration());
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Map<String, Object> rendererPriorityPolicy = new HashMap<>();
+        rendererPriorityPolicy.put("rendererRequestedPriority", webView.getRendererRequestedPriority());
+        rendererPriorityPolicy.put("waivedWhenNotVisible", webView.getRendererPriorityWaivedWhenNotVisible());
+        realOptions.put("rendererPriorityPolicy", rendererPriorityPolicy);
+      }
+    }
+    return realOptions;
   }
 
   private void setLayoutAlgorithm(String value) {
     if (value != null) {
       switch (value) {
+        case "NARROW_COLUMNS":
+          layoutAlgorithm = NARROW_COLUMNS;
         case "NORMAL":
           layoutAlgorithm = NORMAL;
         case "TEXT_AUTOSIZING":
@@ -400,6 +524,8 @@ public class InAppWebViewOptions implements Options {
           } else {
             return "NORMAL";
           }
+        case NARROW_COLUMNS:
+          return "NARROW_COLUMNS";
       }
     }
     return null;

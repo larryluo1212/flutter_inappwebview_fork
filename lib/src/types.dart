@@ -1,15 +1,22 @@
-
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
 
+import 'in_app_browser.dart';
+import 'webview.dart';
 import 'webview_options.dart';
+import 'in_app_webview_controller.dart';
+import 'http_auth_credentials_database.dart';
+import 'chrome_safari_browser.dart';
+import 'cookie_manager.dart';
+import 'web_storage_manager.dart';
 
 var uuidGenerator = new Uuid();
 
-///This type represents a callback, added with [addJavaScriptHandler], that listens to post messages sent from JavaScript.
+///This type represents a callback, added with [InAppWebViewController.addJavaScriptHandler], that listens to post messages sent from JavaScript.
 ///
 ///The Android implementation uses [addJavascriptInterface](https://developer.android.com/reference/android/webkit/WebView#addJavascriptInterface(java.lang.Object,%20java.lang.String)).
 ///The iOS implementation uses [addScriptMessageHandler](https://developer.apple.com/documentation/webkit/wkusercontentcontroller/1537172-addscriptmessagehandler?language=objc)
@@ -24,7 +31,9 @@ typedef dynamic JavaScriptHandlerCallback(List<dynamic> arguments);
 ///Class representing the level of a console message.
 class ConsoleMessageLevel {
   final int _value;
+
   const ConsoleMessageLevel._internal(this._value);
+
   static ConsoleMessageLevel fromValue(int value) {
     if (value != null && value >= 0 && value <= 4)
       return ConsoleMessageLevel._internal(value);
@@ -32,6 +41,7 @@ class ConsoleMessageLevel {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -61,8 +71,8 @@ class ConsoleMessageLevel {
   int get hashCode => _value.hashCode;
 }
 
-///Public class representing a resource response of the [InAppBrowser] WebView.
-///It is used by the method [InAppBrowser.onLoadResource()].
+///Class representing a resource response of the [WebView].
+///It is used by the method [WebView.onLoadResource].
 class LoadedResource {
   ///A string representing the type of resource.
   String initiatorType;
@@ -77,9 +87,27 @@ class LoadedResource {
   double duration;
 
   LoadedResource({this.initiatorType, this.url, this.startTime, this.duration});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "initiatorType": initiatorType,
+      "url": url,
+      "startTime": startTime,
+      "duration": duration
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Initial [data] as a content for an [InAppWebView] instance, using [baseUrl] as the base URL for it.
+///Initial [data] as a content for an [WebView] instance, using [baseUrl] as the base URL for it.
 class InAppWebViewInitialData {
   ///A String of data in the given encoding.
   String data;
@@ -98,10 +126,10 @@ class InAppWebViewInitialData {
 
   InAppWebViewInitialData(
       {@required this.data,
-        this.mimeType = "text/html",
-        this.encoding = "utf8",
-        this.baseUrl = "about:blank",
-        this.historyUrl = "about:blank"});
+      this.mimeType = "text/html",
+      this.encoding = "utf8",
+      this.baseUrl = "about:blank",
+      this.historyUrl = "about:blank"});
 
   Map<String, String> toMap() {
     return {
@@ -112,34 +140,142 @@ class InAppWebViewInitialData {
       "historyUrl": historyUrl
     };
   }
+
+  Map<String, String> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-/*
-///Public class representing a resource request of the WebView.
-///It is used by the event [shouldInterceptRequest()].
+///Class representing a resource request of the WebView used by the event [WebView.androidShouldInterceptRequest].
+///Available only on Android.
+///
+///**Official Android API**: https://developer.android.com/reference/android/webkit/WebResourceRequest
 class WebResourceRequest {
+  ///The URL for which the resource request was made.
   String url;
+
+  ///The headers associated with the request.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it will be always `null`.
   Map<String, String> headers;
+
+  ///The method associated with the request, for example `GET`.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it will be always "GET".
   String method;
-  WebResourceRequest({@required this.url, @required this.headers, @required this.method});
+
+  ///Gets whether a gesture (such as a click) was associated with the request.
+  ///For security reasons in certain situations this method may return `false` even though
+  ///the sequence of events which caused the request to be created was initiated by a user
+  ///gesture.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it will be always `false`.
+  bool hasGesture;
+
+  ///Whether the request was made in order to fetch the main frame's document.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it will be always `true`.
+  bool isForMainFrame;
+
+  ///Whether the request was a result of a server-side redirect.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it will be always `false`.
+  bool isRedirect;
+
+  WebResourceRequest(
+      {@required this.url,
+      this.headers,
+      this.method,
+      this.hasGesture,
+      this.isForMainFrame,
+      this.isRedirect});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "url": url,
+      "headers": headers,
+      "method": method,
+      "hasGesture": hasGesture,
+      "isForMainFrame": isForMainFrame,
+      "isRedirect": isRedirect
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
-///Public class representing a resource response of the WebView.
-///It is used by the event [shouldInterceptRequest()].
+
+///Class representing a resource response of the WebView used by the event [WebView.androidShouldInterceptRequest].
+///Available only on Android.
+///
+///**Official Android API**: https://developer.android.com/reference/android/webkit/WebResourceResponse
 class WebResourceResponse {
+  ///The resource response's MIME type, for example `text/html`.
   String contentType;
+
+  ///The resource response's encoding. The default value is `utf-8`.
   String contentEncoding;
+
+  ///The data provided by the resource response.
   Uint8List data;
-  WebResourceResponse({@required this.contentType, this.contentEncoding = "utf-8", @required this.data}): assert(contentType != null && contentEncoding != null && data != null);
+
+  ///The headers for the resource response. If [headers] isn't `null`, then you need to set also [statusCode] and [reasonPhrase].
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it won't be used.
+  Map<String, String> headers;
+
+  ///The status code needs to be in the ranges [100, 299], [400, 599]. Causing a redirect by specifying a 3xx code is not supported.
+  ///If statusCode is set, then you need to set also [headers] and [reasonPhrase]. This value cannot be `null`.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it won't be used.
+  int statusCode;
+
+  ///The phrase describing the status code, for example `"OK"`. Must be non-empty.
+  ///If reasonPhrase is set, then you need to set also [headers] and [reasonPhrase]. This value cannot be `null`.
+  ///
+  ///**NOTE**: Available on Android 21+. For Android < 21 it won't be used.
+  String reasonPhrase;
+
+  WebResourceResponse(
+      {this.contentType = "",
+      this.contentEncoding = "utf-8",
+      this.data = null,
+      this.headers,
+      this.statusCode,
+      this.reasonPhrase});
+
   Map<String, dynamic> toMap() {
     return {
       "contentType": contentType,
       "contentEncoding": contentEncoding,
-      "data": data
+      "data": data,
+      "statusCode": statusCode,
+      "reasonPhrase": reasonPhrase
     };
   }
-}*/
 
-///Public class representing the response returned by the [onLoadResourceCustomScheme()] event.
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+}
+
+///Class representing the response returned by the [WebView.onLoadResourceCustomScheme] event.
 ///It allows to load a specific resource. The resource data must be encoded to `base64`.
 class CustomSchemeResponse {
   ///Data enconded to 'base64'.
@@ -153,31 +289,53 @@ class CustomSchemeResponse {
 
   CustomSchemeResponse(
       {@required this.data,
-        @required this.contentType,
-        this.contentEnconding = 'utf-8'});
+      @required this.contentType,
+      this.contentEnconding = 'utf-8'});
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
       'content-type': contentType,
       'content-encoding': contentEnconding,
       'data': data
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Public class representing a JavaScript console message from WebCore.
+///Class representing a JavaScript console message from WebCore.
 ///This could be a issued by a call to one of the console logging functions (e.g. console.log('...')) or a JavaScript error on the page.
 ///
-///To receive notifications of these messages, use the [onConsoleMessage] event.
+///To receive notifications of these messages, use the [WebView.onConsoleMessage] event.
 class ConsoleMessage {
   String message;
   ConsoleMessageLevel messageLevel;
 
   ConsoleMessage(
       {this.message = "", this.messageLevel = ConsoleMessageLevel.LOG});
+
+  Map<String, dynamic> toMap() {
+    return {"message": message, "messageLevel": messageLevel?.toValue()};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///This class contains a snapshot of the current back/forward list for a WebView.
+///This class contains a snapshot of the current back/forward list for a [WebView].
 class WebHistory {
   ///List of all [WebHistoryItem]s.
   List<WebHistoryItem> list;
@@ -186,9 +344,22 @@ class WebHistory {
   int currentIndex;
 
   WebHistory({this.list, this.currentIndex});
+
+  Map<String, dynamic> toMap() {
+    return {"list": list, "currentIndex": currentIndex};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///A convenience class for accessing fields in an entry in the back/forward list of a WebView. Each WebHistoryItem is a snapshot of the requested history item.
+///A convenience class for accessing fields in an entry in the back/forward list of a WebView. Each [WebHistoryItem] is a snapshot of the requested history item.
 class WebHistoryItem {
   ///Original url of this history item.
   String originalUrl;
@@ -207,9 +378,28 @@ class WebHistoryItem {
 
   WebHistoryItem(
       {this.originalUrl, this.title, this.url, this.index, this.offset});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "originalUrl": originalUrl,
+      "title": title,
+      "url": url,
+      "index": index,
+      "offset": offset
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class used by the host application to set the Geolocation permission state for an origin during the [androidOnGeolocationPermissionsShowPrompt] event.
+///Class used by the host application to set the Geolocation permission state for an origin during the [WebView.androidOnGeolocationPermissionsShowPrompt] event.
 class GeolocationPermissionShowPromptResponse {
   ///The origin for which permissions are set.
   String origin;
@@ -226,12 +416,23 @@ class GeolocationPermissionShowPromptResponse {
   Map<String, dynamic> toMap() {
     return {"origin": origin, "allow": allow, "retain": retain};
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [JsAlertResponse] class.
 class JsAlertResponseAction {
   final int _value;
+
   const JsAlertResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   static const CONFIRM = const JsAlertResponseAction._internal(0);
@@ -242,7 +443,7 @@ class JsAlertResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class represents the response used by the [onJsAlert] event to control a JavaScript alert dialog.
+///Class that represents the response used by the [WebView.onJsAlert] event to control a JavaScript alert dialog.
 class JsAlertResponse {
   ///Message to be displayed in the window.
   String message;
@@ -258,9 +459,9 @@ class JsAlertResponse {
 
   JsAlertResponse(
       {this.message = "",
-        this.handledByClient = false,
-        this.confirmButtonTitle = "",
-        this.action = JsAlertResponseAction.CONFIRM});
+      this.handledByClient = false,
+      this.confirmButtonTitle = "",
+      this.action = JsAlertResponseAction.CONFIRM});
 
   Map<String, dynamic> toMap() {
     return {
@@ -270,12 +471,23 @@ class JsAlertResponse {
       "action": action?.toValue()
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [JsConfirmResponse] class.
 class JsConfirmResponseAction {
   final int _value;
+
   const JsConfirmResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   static const CONFIRM = const JsConfirmResponseAction._internal(0);
@@ -287,7 +499,7 @@ class JsConfirmResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [onJsConfirm] event to control a JavaScript confirm dialog.
+///Class that represents the response used by the [WebView.onJsConfirm] event to control a JavaScript confirm dialog.
 class JsConfirmResponse {
   ///Message to be displayed in the window.
   String message;
@@ -306,10 +518,10 @@ class JsConfirmResponse {
 
   JsConfirmResponse(
       {this.message = "",
-        this.handledByClient = false,
-        this.confirmButtonTitle = "",
-        this.cancelButtonTitle = "",
-        this.action = JsConfirmResponseAction.CANCEL});
+      this.handledByClient = false,
+      this.confirmButtonTitle = "",
+      this.cancelButtonTitle = "",
+      this.action = JsConfirmResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -320,12 +532,23 @@ class JsConfirmResponse {
       "action": action?.toValue()
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [JsPromptResponse] class.
 class JsPromptResponseAction {
   final int _value;
+
   const JsPromptResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   static const CONFIRM = const JsPromptResponseAction._internal(0);
@@ -337,7 +560,7 @@ class JsPromptResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [onJsPrompt] event to control a JavaScript prompt dialog.
+///Class that represents the response used by the [WebView.onJsPrompt] event to control a JavaScript prompt dialog.
 class JsPromptResponse {
   ///Message to be displayed in the window.
   String message;
@@ -362,12 +585,12 @@ class JsPromptResponse {
 
   JsPromptResponse(
       {this.message = "",
-        this.defaultValue = "",
-        this.handledByClient = false,
-        this.confirmButtonTitle = "",
-        this.cancelButtonTitle = "",
-        this.value,
-        this.action = JsPromptResponseAction.CANCEL});
+      this.defaultValue = "",
+      this.handledByClient = false,
+      this.confirmButtonTitle = "",
+      this.cancelButtonTitle = "",
+      this.value,
+      this.action = JsPromptResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -380,12 +603,23 @@ class JsPromptResponse {
       "action": action?.toValue()
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents the reason the resource was caught by Safe Browsing.
 class SafeBrowsingThreat {
   final int _value;
+
   const SafeBrowsingThreat._internal(this._value);
+
   static SafeBrowsingThreat fromValue(int value) {
     if (value != null && value >= 0 && value <= 4)
       return SafeBrowsingThreat._internal(value);
@@ -393,6 +627,7 @@ class SafeBrowsingThreat {
   }
 
   int toValue() => _value;
+
   String toString() {
     switch (_value) {
       case 1:
@@ -410,15 +645,15 @@ class SafeBrowsingThreat {
   }
 
   static const SAFE_BROWSING_THREAT_UNKNOWN =
-  const SafeBrowsingThreat._internal(0);
+      const SafeBrowsingThreat._internal(0);
   static const SAFE_BROWSING_THREAT_MALWARE =
-  const SafeBrowsingThreat._internal(1);
+      const SafeBrowsingThreat._internal(1);
   static const SAFE_BROWSING_THREAT_PHISHING =
-  const SafeBrowsingThreat._internal(2);
+      const SafeBrowsingThreat._internal(2);
   static const SAFE_BROWSING_THREAT_UNWANTED_SOFTWARE =
-  const SafeBrowsingThreat._internal(3);
+      const SafeBrowsingThreat._internal(3);
   static const SAFE_BROWSING_THREAT_BILLING =
-  const SafeBrowsingThreat._internal(4);
+      const SafeBrowsingThreat._internal(4);
 
   bool operator ==(value) => value == _value;
 
@@ -429,7 +664,9 @@ class SafeBrowsingThreat {
 ///Class used by [SafeBrowsingResponse] class.
 class SafeBrowsingResponseAction {
   final int _value;
+
   const SafeBrowsingResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Act as if the user clicked the "back to safety" button.
@@ -440,7 +677,7 @@ class SafeBrowsingResponseAction {
 
   ///Display the default interstitial.
   static const SHOW_INTERSTITIAL =
-  const SafeBrowsingResponseAction._internal(2);
+      const SafeBrowsingResponseAction._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -448,10 +685,10 @@ class SafeBrowsingResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [androidOnSafeBrowsingHit] event.
+///Class that represents the response used by the [WebView.androidOnSafeBrowsingHit] event.
 ///It is used to indicate an action to take when hitting a malicious URL.
 class SafeBrowsingResponse {
-  ///If reporting is enabled, all reports will be sent according to the privacy policy referenced by [InAppWebViewController.androidGetSafeBrowsingPrivacyPolicyUrl].
+  ///If reporting is enabled, all reports will be sent according to the privacy policy referenced by [AndroidInAppWebViewController.getSafeBrowsingPrivacyPolicyUrl].
   bool report;
 
   ///Indicate the [SafeBrowsingResponseAction] to take when hitting a malicious URL.
@@ -459,17 +696,28 @@ class SafeBrowsingResponse {
 
   SafeBrowsingResponse(
       {this.report = true,
-        this.action = SafeBrowsingResponseAction.SHOW_INTERSTITIAL});
+      this.action = SafeBrowsingResponseAction.SHOW_INTERSTITIAL});
 
   Map<String, dynamic> toMap() {
     return {"report": report, "action": action?.toValue()};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 }
 
 ///Class used by [HttpAuthResponse] class.
 class HttpAuthResponseAction {
   final int _value;
+
   const HttpAuthResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Instructs the WebView to cancel the authentication request.
@@ -480,7 +728,7 @@ class HttpAuthResponseAction {
 
   ///Uses the credentials stored for the current host.
   static const USE_SAVED_HTTP_AUTH_CREDENTIALS =
-  const HttpAuthResponseAction._internal(2);
+      const HttpAuthResponseAction._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -488,7 +736,7 @@ class HttpAuthResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [onReceivedHttpAuthRequest] event.
+///Class that represents the response used by the [WebView.onReceivedHttpAuthRequest] event.
 class HttpAuthResponse {
   ///Represents the username used for the authentication if the [action] corresponds to [HttpAuthResponseAction.PROCEED]
   String username;
@@ -504,9 +752,9 @@ class HttpAuthResponse {
 
   HttpAuthResponse(
       {this.username = "",
-        this.password = "",
-        this.permanentPersistence = false,
-        this.action = HttpAuthResponseAction.CANCEL});
+      this.password = "",
+      this.permanentPersistence = false,
+      this.action = HttpAuthResponseAction.CANCEL});
 
   Map<String, dynamic> toMap() {
     return {
@@ -516,9 +764,18 @@ class HttpAuthResponse {
       "action": action?.toValue()
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class that represents the challenge of the [onReceivedHttpAuthRequest] event.
+///Class that represents the challenge of the [WebView.onReceivedHttpAuthRequest] event.
 ///It provides all the information about the challenge.
 class HttpAuthChallenge {
   ///A count of previous failed authentication attempts.
@@ -530,6 +787,22 @@ class HttpAuthChallenge {
   HttpAuthChallenge(
       {@required this.previousFailureCount, @required this.protectionSpace})
       : assert(previousFailureCount != null && protectionSpace != null);
+
+  Map<String, dynamic> toMap() {
+    return {
+      "previousFailureCount": previousFailureCount,
+      "protectionSpace": protectionSpace?.toMap()
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents a protection space requiring authentication.
@@ -551,6 +824,19 @@ class ProtectionSpace {
   ProtectionSpace(
       {@required this.host, @required this.protocol, this.realm, this.port})
       : assert(host != null && protocol != null);
+
+  Map<String, dynamic> toMap() {
+    return {"host": host, "protocol": protocol, "realm": realm, "port": port};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents the credentials of an http authentication.
@@ -564,12 +850,27 @@ class HttpAuthCredential {
 
   HttpAuthCredential({@required this.username, @required this.password})
       : assert(username != null && password != null);
+
+  Map<String, dynamic> toMap() {
+    return {"username": username, "password": password};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [ServerTrustAuthResponse] class.
 class ServerTrustAuthResponseAction {
   final int _value;
+
   const ServerTrustAuthResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Instructs the WebView to cancel the authentication challenge.
@@ -584,7 +885,7 @@ class ServerTrustAuthResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///ServerTrustAuthResponse class represents the response used by the [onReceivedServerTrustAuthRequest] event.
+///ServerTrustAuthResponse class represents the response used by the [WebView.onReceivedServerTrustAuthRequest] event.
 class ServerTrustAuthResponse {
   ///Indicate the [ServerTrustAuthResponseAction] to take in response of the server trust authentication challenge.
   ServerTrustAuthResponseAction action;
@@ -594,9 +895,18 @@ class ServerTrustAuthResponse {
   Map<String, dynamic> toMap() {
     return {"action": action?.toValue()};
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class that represents the challenge of the [onReceivedServerTrustAuthRequest] event.
+///Class that represents the challenge of the [WebView.onReceivedServerTrustAuthRequest] event.
 ///It provides all the information about the challenge.
 class ServerTrustChallenge {
   ///The protection space requiring authentication.
@@ -617,16 +927,36 @@ class ServerTrustChallenge {
 
   ServerTrustChallenge(
       {@required this.protectionSpace,
-        @required this.error,
-        this.message,
-        this.serverCertificate})
+      @required this.error,
+      this.message,
+      this.serverCertificate})
       : assert(protectionSpace != null && error != null);
+
+  Map<String, dynamic> toMap() {
+    return {
+      "protectionSpace": protectionSpace?.toMap(),
+      "error": error,
+      "message": message,
+      "serverCertificate": serverCertificate
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [ClientCertResponse] class.
 class ClientCertResponseAction {
   final int _value;
+
   const ClientCertResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Cancel this request.
@@ -644,7 +974,7 @@ class ClientCertResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [onReceivedClientCertRequest] event.
+///Class that represents the response used by the [WebView.onReceivedClientCertRequest] event.
 class ClientCertResponse {
   ///The file path of the certificate to use.
   String certificatePath;
@@ -660,9 +990,9 @@ class ClientCertResponse {
 
   ClientCertResponse(
       {this.certificatePath,
-        this.certificatePassword = "",
-        this.androidKeyStoreType = "PKCS12",
-        this.action = ClientCertResponseAction.CANCEL}) {
+      this.certificatePassword = "",
+      this.androidKeyStoreType = "PKCS12",
+      this.action = ClientCertResponseAction.CANCEL}) {
     if (this.action == ClientCertResponseAction.PROCEED)
       assert(certificatePath != null && certificatePath.isNotEmpty);
   }
@@ -675,9 +1005,18 @@ class ClientCertResponse {
       "action": action?.toValue()
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class that represents the challenge of the [onReceivedClientCertRequest] event.
+///Class that represents the challenge of the [WebView.onReceivedClientCertRequest] event.
 ///It provides all the information about the challenge.
 class ClientCertChallenge {
   ///The protection space requiring authentication.
@@ -685,6 +1024,19 @@ class ClientCertChallenge {
 
   ClientCertChallenge({@required this.protectionSpace})
       : assert(protectionSpace != null);
+
+  Map<String, dynamic> toMap() {
+    return {"protectionSpace": protectionSpace?.toMap()};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents a favicon of a website. It is used by [InAppWebViewController.getFavicons] method.
@@ -704,15 +1056,26 @@ class Favicon {
   Favicon({@required this.url, this.rel, this.width, this.height})
       : assert(url != null);
 
+  Map<String, dynamic> toMap() {
+    return {"url": url, "rel": rel, "width": width, "height": height};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
   String toString() {
-    return "url: $url, rel: $rel, width: $width, height: $height";
+    return toMap().toString();
   }
 }
 
 ///Class that represents an Android-specific class used to override the way the cache is used.
 class AndroidCacheMode {
   final int _value;
+
   const AndroidCacheMode._internal(this._value);
+
   static AndroidCacheMode fromValue(int value) {
     if (value != null && value >= 0 && value <= 3)
       return AndroidCacheMode._internal(value);
@@ -720,6 +1083,7 @@ class AndroidCacheMode {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -740,15 +1104,13 @@ class AndroidCacheMode {
   static const LOAD_DEFAULT = const AndroidCacheMode._internal(-1);
 
   ///Use cached resources when they are available, even if they have expired. Otherwise load resources from the network.
-  static const LOAD_CACHE_ELSE_NETWORK =
-  const AndroidCacheMode._internal(1);
+  static const LOAD_CACHE_ELSE_NETWORK = const AndroidCacheMode._internal(1);
 
   ///Don't use the cache, load from the network.
   static const LOAD_NO_CACHE = const AndroidCacheMode._internal(2);
 
   ///Don't use the network, load from the cache.
-  static const LOAD_CACHE_ONLY =
-  const AndroidCacheMode._internal(3);
+  static const LOAD_CACHE_ONLY = const AndroidCacheMode._internal(3);
 
   bool operator ==(value) => value == _value;
 
@@ -761,7 +1123,9 @@ class AndroidCacheMode {
 ///**NOTE**: available on Android 24+.
 class AndroidActionModeMenuItem {
   final int _value;
+
   const AndroidActionModeMenuItem._internal(this._value);
+
   static AndroidActionModeMenuItem fromValue(int value) {
     if (value != null && value != 3 && value >= 0 && value <= 4)
       return AndroidActionModeMenuItem._internal(value);
@@ -769,6 +1133,7 @@ class AndroidActionModeMenuItem {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -785,20 +1150,18 @@ class AndroidActionModeMenuItem {
   }
 
   ///No menu items should be disabled.
-  static const MENU_ITEM_NONE =
-  const AndroidActionModeMenuItem._internal(0);
+  static const MENU_ITEM_NONE = const AndroidActionModeMenuItem._internal(0);
 
   ///Disable menu item "Share".
-  static const MENU_ITEM_SHARE =
-  const AndroidActionModeMenuItem._internal(1);
+  static const MENU_ITEM_SHARE = const AndroidActionModeMenuItem._internal(1);
 
   ///Disable menu item "Web Search".
   static const MENU_ITEM_WEB_SEARCH =
-  const AndroidActionModeMenuItem._internal(2);
+      const AndroidActionModeMenuItem._internal(2);
 
   ///Disable all the action mode menu items for text processing.
   static const MENU_ITEM_PROCESS_TEXT =
-  const AndroidActionModeMenuItem._internal(4);
+      const AndroidActionModeMenuItem._internal(4);
 
   bool operator ==(value) => value == _value;
 
@@ -811,7 +1174,9 @@ class AndroidActionModeMenuItem {
 ///**NOTE**: available on Android 29+.
 class AndroidForceDark {
   final int _value;
+
   const AndroidForceDark._internal(this._value);
+
   static AndroidForceDark fromValue(int value) {
     if (value != null && value >= 0 && value <= 2)
       return AndroidForceDark._internal(value);
@@ -819,6 +1184,7 @@ class AndroidForceDark {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -837,8 +1203,7 @@ class AndroidForceDark {
   static const FORCE_DARK_OFF = const AndroidForceDark._internal(0);
 
   ///Enable force dark dependent on the state of the WebView parent view.
-  static const FORCE_DARK_AUTO =
-  const AndroidForceDark._internal(1);
+  static const FORCE_DARK_AUTO = const AndroidForceDark._internal(1);
 
   ///Unconditionally enable force dark. In this mode WebView content will always be rendered so as to emulate a dark theme.
   static const FORCE_DARK_ON = const AndroidForceDark._internal(2);
@@ -852,27 +1217,33 @@ class AndroidForceDark {
 ///Class that represents an Android-specific class used to set the underlying layout algorithm.
 class AndroidLayoutAlgorithm {
   final String _value;
+
   const AndroidLayoutAlgorithm._internal(this._value);
+
   static AndroidLayoutAlgorithm fromValue(String value) {
-    return (["NORMAL", "TEXT_AUTOSIZING"].contains(value))
+    return (["NORMAL", "TEXT_AUTOSIZING", "NARROW_COLUMNS"].contains(value))
         ? AndroidLayoutAlgorithm._internal(value)
         : null;
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
   ///NORMAL means no rendering changes. This is the recommended choice for maximum compatibility across different platforms and Android versions.
-  static const NORMAL =
-  const AndroidLayoutAlgorithm._internal("NORMAL");
+  static const NORMAL = const AndroidLayoutAlgorithm._internal("NORMAL");
 
   ///TEXT_AUTOSIZING boosts font size of paragraphs based on heuristics to make the text readable when viewing a wide-viewport layout in the overview mode.
   ///It is recommended to enable zoom support [AndroidInAppWebViewOptions.supportZoom] when using this mode.
   ///
   ///**NOTE**: available on Android 19+.
   static const TEXT_AUTOSIZING =
-  const AndroidLayoutAlgorithm._internal("TEXT_AUTOSIZING");
+      const AndroidLayoutAlgorithm._internal("TEXT_AUTOSIZING");
+
+  ///NARROW_COLUMNS makes all columns no wider than the screen if possible. Only use this for API levels prior to `Build.VERSION_CODES.KITKAT`.
+  static const NARROW_COLUMNS =
+      const AndroidLayoutAlgorithm._internal("NARROW_COLUMNS");
 
   bool operator ==(value) => value == _value;
 
@@ -885,7 +1256,9 @@ class AndroidLayoutAlgorithm {
 ///**NOTE**: available on Android 21+.
 class AndroidMixedContentMode {
   final int _value;
+
   const AndroidMixedContentMode._internal(this._value);
+
   static AndroidMixedContentMode fromValue(int value) {
     if (value != null && value >= 0 && value <= 2)
       return AndroidMixedContentMode._internal(value);
@@ -893,6 +1266,7 @@ class AndroidMixedContentMode {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -909,12 +1283,12 @@ class AndroidMixedContentMode {
   ///In this mode, the WebView will allow a secure origin to load content from any other origin, even if that origin is insecure.
   ///This is the least secure mode of operation for the WebView, and where possible apps should not set this mode.
   static const MIXED_CONTENT_ALWAYS_ALLOW =
-  const AndroidMixedContentMode._internal(0);
+      const AndroidMixedContentMode._internal(0);
 
   ///In this mode, the WebView will not allow a secure origin to load content from an insecure origin.
   ///This is the preferred and most secure mode of operation for the WebView and apps are strongly advised to use this mode.
   static const MIXED_CONTENT_NEVER_ALLOW =
-  const AndroidMixedContentMode._internal(1);
+      const AndroidMixedContentMode._internal(1);
 
   ///In this mode, the WebView will attempt to be compatible with the approach of a modern web browser with regard to mixed content.
   ///Some insecure content may be allowed to be loaded by a secure origin and other types of content will be blocked.
@@ -922,7 +1296,7 @@ class AndroidMixedContentMode {
   ///This mode is intended to be used by apps that are not in control of the content that they render but desire to operate in a reasonably secure environment.
   ///For highest security, apps are recommended to use [AndroidMixedContentMode.MIXED_CONTENT_NEVER_ALLOW].
   static const MIXED_CONTENT_COMPATIBILITY_MODE =
-  const AndroidMixedContentMode._internal(2);
+      const AndroidMixedContentMode._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -933,7 +1307,9 @@ class AndroidMixedContentMode {
 ///Class that represents an iOS-specific class used to set the level of granularity with which the user can interactively select content in the web view.
 class IOSWKSelectionGranularity {
   final int _value;
+
   const IOSWKSelectionGranularity._internal(this._value);
+
   static IOSWKSelectionGranularity fromValue(int value) {
     if (value != null && value >= 0 && value <= 1)
       return IOSWKSelectionGranularity._internal(value);
@@ -941,6 +1317,7 @@ class IOSWKSelectionGranularity {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -956,8 +1333,7 @@ class IOSWKSelectionGranularity {
   static const DYNAMIC = const IOSWKSelectionGranularity._internal(0);
 
   ///Selection endpoints can be placed at any character boundary.
-  static const CHARACTER =
-  const IOSWKSelectionGranularity._internal(1);
+  static const CHARACTER = const IOSWKSelectionGranularity._internal(1);
 
   bool operator ==(value) => value == _value;
 
@@ -965,12 +1341,14 @@ class IOSWKSelectionGranularity {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents an iOS-specific class used to specify a dataDetectoryTypes value that adds interactivity to web content that matches the value.
+///Class that represents an iOS-specific class used to specify a `dataDetectoryTypes` value that adds interactivity to web content that matches the value.
 ///
 ///**NOTE**: available on iOS 10.0+.
 class IOSWKDataDetectorTypes {
   final String _value;
+
   const IOSWKDataDetectorTypes._internal(this._value);
+
   static IOSWKDataDetectorTypes fromValue(String value) {
     return ([
       "NONE",
@@ -990,6 +1368,7 @@ class IOSWKDataDetectorTypes {
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
@@ -998,34 +1377,33 @@ class IOSWKDataDetectorTypes {
 
   ///Phone numbers are detected and turned into links.
   static const PHONE_NUMBER =
-  const IOSWKDataDetectorTypes._internal("PHONE_NUMBER");
+      const IOSWKDataDetectorTypes._internal("PHONE_NUMBER");
 
   ///URLs in text are detected and turned into links.
   static const LINK = const IOSWKDataDetectorTypes._internal("LINK");
 
   ///Addresses are detected and turned into links.
-  static const ADDRESS =
-  const IOSWKDataDetectorTypes._internal("ADDRESS");
+  static const ADDRESS = const IOSWKDataDetectorTypes._internal("ADDRESS");
 
   ///Dates and times that are in the future are detected and turned into links.
   static const CALENDAR_EVENT =
-  const IOSWKDataDetectorTypes._internal("CALENDAR_EVENT");
+      const IOSWKDataDetectorTypes._internal("CALENDAR_EVENT");
 
   ///Tracking numbers are detected and turned into links.
   static const TRACKING_NUMBER =
-  const IOSWKDataDetectorTypes._internal("TRACKING_NUMBER");
+      const IOSWKDataDetectorTypes._internal("TRACKING_NUMBER");
 
   ///Flight numbers are detected and turned into links.
   static const FLIGHT_NUMBER =
-  const IOSWKDataDetectorTypes._internal("FLIGHT_NUMBER");
+      const IOSWKDataDetectorTypes._internal("FLIGHT_NUMBER");
 
   ///Lookup suggestions are detected and turned into links.
   static const LOOKUP_SUGGESTION =
-  const IOSWKDataDetectorTypes._internal("LOOKUP_SUGGESTION");
+      const IOSWKDataDetectorTypes._internal("LOOKUP_SUGGESTION");
 
   ///Spotlight suggestions are detected and turned into links.
   static const SPOTLIGHT_SUGGESTION =
-  const IOSWKDataDetectorTypes._internal("SPOTLIGHT_SUGGESTION");
+      const IOSWKDataDetectorTypes._internal("SPOTLIGHT_SUGGESTION");
 
   ///All of the above data types are turned into links when detected. Choosing this value will automatically include any new detection type that is added.
   static const ALL = const IOSWKDataDetectorTypes._internal("ALL");
@@ -1039,22 +1417,23 @@ class IOSWKDataDetectorTypes {
 ///Class that represents a floating-point value that determines the rate of deceleration after the user lifts their finger.
 class IOSUIScrollViewDecelerationRate {
   final String _value;
+
   const IOSUIScrollViewDecelerationRate._internal(this._value);
+
   static IOSUIScrollViewDecelerationRate fromValue(String value) {
-    return ([
-      "NORMAL",
-      "FAST"
-    ].contains(value))
+    return (["NORMAL", "FAST"].contains(value))
         ? IOSUIScrollViewDecelerationRate._internal(value)
         : null;
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
   ///The default deceleration rate for a scroll view: `0.998`.
-  static const NORMAL = const IOSUIScrollViewDecelerationRate._internal("NORMAL");
+  static const NORMAL =
+      const IOSUIScrollViewDecelerationRate._internal("NORMAL");
 
   ///A fast deceleration rate for a scroll view: `0.99`.
   static const FAST = const IOSUIScrollViewDecelerationRate._internal("FAST");
@@ -1068,7 +1447,9 @@ class IOSUIScrollViewDecelerationRate {
 ///Class that represents the content mode to prefer when loading and rendering a webpage.
 class UserPreferredContentMode {
   final int _value;
+
   const UserPreferredContentMode._internal(this._value);
+
   static UserPreferredContentMode fromValue(int value) {
     if (value != null && value >= 0 && value <= 2)
       return UserPreferredContentMode._internal(value);
@@ -1076,6 +1457,7 @@ class UserPreferredContentMode {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -1090,15 +1472,13 @@ class UserPreferredContentMode {
   }
 
   ///The recommended content mode for the current platform.
-  static const RECOMMENDED =
-  const UserPreferredContentMode._internal(0);
+  static const RECOMMENDED = const UserPreferredContentMode._internal(0);
 
   ///Represents content targeting mobile browsers.
   static const MOBILE = const UserPreferredContentMode._internal(1);
 
   ///Represents content targeting desktop browsers.
-  static const DESKTOP =
-  const UserPreferredContentMode._internal(2);
+  static const DESKTOP = const UserPreferredContentMode._internal(2);
 
   bool operator ==(value) => value == _value;
 
@@ -1109,7 +1489,9 @@ class UserPreferredContentMode {
 ///Class that represents an iOS-specific class used to specify the modal presentation style when presenting a view controller.
 class IOSUIModalPresentationStyle {
   final int _value;
+
   const IOSUIModalPresentationStyle._internal(this._value);
+
   static IOSUIModalPresentationStyle fromValue(int value) {
     if (value != null && value >= 0 && value <= 9)
       return IOSUIModalPresentationStyle._internal(value);
@@ -1117,6 +1499,7 @@ class IOSUIModalPresentationStyle {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -1145,31 +1528,27 @@ class IOSUIModalPresentationStyle {
   }
 
   ///A presentation style in which the presented view covers the screen.
-  static const FULL_SCREEN =
-  const IOSUIModalPresentationStyle._internal(0);
+  static const FULL_SCREEN = const IOSUIModalPresentationStyle._internal(0);
 
   ///A presentation style that partially covers the underlying content.
-  static const PAGE_SHEET =
-  const IOSUIModalPresentationStyle._internal(1);
+  static const PAGE_SHEET = const IOSUIModalPresentationStyle._internal(1);
 
   ///A presentation style that displays the content centered in the screen.
-  static const FORM_SHEET =
-  const IOSUIModalPresentationStyle._internal(2);
+  static const FORM_SHEET = const IOSUIModalPresentationStyle._internal(2);
 
   ///A presentation style where the content is displayed over another view controller’s content.
-  static const CURRENT_CONTEXT =
-  const IOSUIModalPresentationStyle._internal(3);
+  static const CURRENT_CONTEXT = const IOSUIModalPresentationStyle._internal(3);
 
   ///A custom view presentation style that is managed by a custom presentation controller and one or more custom animator objects.
   static const CUSTOM = const IOSUIModalPresentationStyle._internal(4);
 
   ///A view presentation style in which the presented view covers the screen.
   static const OVER_FULL_SCREEN =
-  const IOSUIModalPresentationStyle._internal(5);
+      const IOSUIModalPresentationStyle._internal(5);
 
   ///A presentation style where the content is displayed over another view controller’s content.
   static const OVER_CURRENT_CONTEXT =
-  const IOSUIModalPresentationStyle._internal(6);
+      const IOSUIModalPresentationStyle._internal(6);
 
   ///A presentation style where the content is displayed in a popover view.
   static const POPOVER = const IOSUIModalPresentationStyle._internal(7);
@@ -1180,8 +1559,7 @@ class IOSUIModalPresentationStyle {
   ///The default presentation style chosen by the system.
   ///
   ///**NOTE**: available on iOS 13.0+.
-  static const AUTOMATIC =
-  const IOSUIModalPresentationStyle._internal(9);
+  static const AUTOMATIC = const IOSUIModalPresentationStyle._internal(9);
 
   bool operator ==(value) => value == _value;
 
@@ -1192,7 +1570,9 @@ class IOSUIModalPresentationStyle {
 ///Class that represents an iOS-specific class used to specify the transition style when presenting a view controller.
 class IOSUIModalTransitionStyle {
   final int _value;
+
   const IOSUIModalTransitionStyle._internal(this._value);
+
   static IOSUIModalTransitionStyle fromValue(int value) {
     if (value != null && value >= 0 && value <= 3)
       return IOSUIModalTransitionStyle._internal(value);
@@ -1200,6 +1580,7 @@ class IOSUIModalTransitionStyle {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -1217,25 +1598,21 @@ class IOSUIModalTransitionStyle {
 
   ///When the view controller is presented, its view slides up from the bottom of the screen.
   ///On dismissal, the view slides back down. This is the default transition style.
-  static const COVER_VERTICAL =
-  const IOSUIModalTransitionStyle._internal(0);
+  static const COVER_VERTICAL = const IOSUIModalTransitionStyle._internal(0);
 
   ///When the view controller is presented, the current view initiates a horizontal 3D flip from right-to-left,
   ///resulting in the revealing of the new view as if it were on the back of the previous view.
   ///On dismissal, the flip occurs from left-to-right, returning to the original view.
-  static const FLIP_HORIZONTAL =
-  const IOSUIModalTransitionStyle._internal(1);
+  static const FLIP_HORIZONTAL = const IOSUIModalTransitionStyle._internal(1);
 
   ///When the view controller is presented, the current view fades out while the new view fades in at the same time.
   ///On dismissal, a similar type of cross-fade is used to return to the original view.
-  static const CROSS_DISSOLVE =
-  const IOSUIModalTransitionStyle._internal(2);
+  static const CROSS_DISSOLVE = const IOSUIModalTransitionStyle._internal(2);
 
   ///When the view controller is presented, one corner of the current view curls up to reveal the presented view underneath.
   ///On dismissal, the curled up page unfurls itself back on top of the presented view.
   ///A view controller presented using this transition is itself prevented from presenting any additional view controllers.
-  static const PARTIAL_CURL =
-  const IOSUIModalTransitionStyle._internal(3);
+  static const PARTIAL_CURL = const IOSUIModalTransitionStyle._internal(3);
 
   bool operator ==(value) => value == _value;
 
@@ -1248,7 +1625,9 @@ class IOSUIModalTransitionStyle {
 ///**NOTE**: available on iOS 11.0+.
 class IOSSafariDismissButtonStyle {
   final int _value;
+
   const IOSSafariDismissButtonStyle._internal(this._value);
+
   static IOSSafariDismissButtonStyle fromValue(int value) {
     if (value != null && value >= 0 && value <= 2)
       return IOSSafariDismissButtonStyle._internal(value);
@@ -1256,6 +1635,7 @@ class IOSSafariDismissButtonStyle {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -1295,24 +1675,25 @@ class InAppWebViewGroupOptions {
   ///iOS-specific options.
   IOSInAppWebViewOptions ios;
 
-  InAppWebViewGroupOptions(
-      {this.crossPlatform,
-        this.android,
-        this.ios});
+  InAppWebViewGroupOptions({this.crossPlatform, this.android, this.ios});
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> options = {};
     options.addAll(this.crossPlatform?.toMap() ?? {});
     if (Platform.isAndroid)
       options.addAll(this.android?.toMap() ?? {});
-    else if (Platform.isIOS)
-      options.addAll(this.ios?.toMap() ?? {});
+    else if (Platform.isIOS) options.addAll(this.ios?.toMap() ?? {});
 
     return options;
   }
 
   Map<String, dynamic> toJson() {
     return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 }
 
@@ -1332,27 +1713,21 @@ class InAppBrowserClassOptions {
 
   InAppBrowserClassOptions(
       {this.crossPlatform,
-        this.android,
-        this.ios,
-        this.inAppWebViewGroupOptions});
+      this.android,
+      this.ios,
+      this.inAppWebViewGroupOptions});
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> options = {};
 
     options.addAll(this.crossPlatform?.toMap() ?? {});
-    options.addAll(
-        this.inAppWebViewGroupOptions?.crossPlatform?.toMap() ?? {});
+    options.addAll(this.inAppWebViewGroupOptions?.crossPlatform?.toMap() ?? {});
     if (Platform.isAndroid) {
       options.addAll(this.android?.toMap() ?? {});
-      options.addAll(this
-          .inAppWebViewGroupOptions?.android
-          ?.toMap() ??
-          {});
+      options.addAll(this.inAppWebViewGroupOptions?.android?.toMap() ?? {});
     } else if (Platform.isIOS) {
       options.addAll(this.ios?.toMap() ?? {});
-      options.addAll(
-          this.inAppWebViewGroupOptions?.ios?.toMap() ??
-              {});
+      options.addAll(this.inAppWebViewGroupOptions?.ios?.toMap() ?? {});
     }
 
     return options;
@@ -1360,6 +1735,11 @@ class InAppBrowserClassOptions {
 
   Map<String, dynamic> toJson() {
     return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 }
 
@@ -1371,15 +1751,13 @@ class ChromeSafariBrowserClassOptions {
   ///iOS-specific options.
   IOSSafariOptions ios;
 
-  ChromeSafariBrowserClassOptions(
-      {this.android, this.ios});
+  ChromeSafariBrowserClassOptions({this.android, this.ios});
 
   Map<String, dynamic> toMap() {
     Map<String, dynamic> options = {};
     if (Platform.isAndroid)
       options.addAll(this.android?.toMap() ?? {});
-    else if (Platform.isIOS)
-      options.addAll(this.ios?.toMap() ?? {});
+    else if (Platform.isIOS) options.addAll(this.ios?.toMap() ?? {});
 
     return options;
   }
@@ -1387,12 +1765,19 @@ class ChromeSafariBrowserClassOptions {
   Map<String, dynamic> toJson() {
     return this.toMap();
   }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [AjaxRequest] class.
 class AjaxRequestAction {
   final int _value;
+
   const AjaxRequestAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Aborts the current [AjaxRequest].
@@ -1415,20 +1800,28 @@ class AjaxRequestAction {
   Map<String, dynamic> toJson() {
     return this.toMap();
   }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [AjaxRequestEvent] class.
 class AjaxRequestEventType {
   final String _value;
+
   const AjaxRequestEventType._internal(this._value);
+
   static AjaxRequestEventType fromValue(String value) {
     return (["loadstart", "load", "loadend", "progress", "error", "abort"]
-        .contains(value))
+            .contains(value))
         ? AjaxRequestEventType._internal(value)
         : null;
   }
 
   String toValue() => _value;
+
   String toString() => _value;
 
   ///The LOADSTART event is fired when a request has started to load data.
@@ -1483,7 +1876,9 @@ class AjaxRequestEvent {
 ///Class used by [AjaxRequest] class. It represents the state of an [AjaxRequest].
 class AjaxRequestReadyState {
   final int _value;
+
   const AjaxRequestReadyState._internal(this._value);
+
   static AjaxRequestReadyState fromValue(int value) {
     if (value != null && value >= 0 && value <= 4)
       return AjaxRequestReadyState._internal(value);
@@ -1491,6 +1886,7 @@ class AjaxRequestReadyState {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -1625,24 +2021,24 @@ class AjaxRequest {
 
   AjaxRequest(
       {this.data,
-        this.method,
-        this.url,
-        this.isAsync,
-        this.user,
-        this.password,
-        this.withCredentials,
-        this.headers,
-        this.readyState,
-        this.status,
-        this.responseURL,
-        this.responseType,
-        this.response,
-        this.responseText,
-        this.responseXML,
-        this.statusText,
-        this.responseHeaders,
-        this.event,
-        this.action = AjaxRequestAction.PROCEED});
+      this.method,
+      this.url,
+      this.isAsync,
+      this.user,
+      this.password,
+      this.withCredentials,
+      this.headers,
+      this.readyState,
+      this.status,
+      this.responseURL,
+      this.responseType,
+      this.response,
+      this.responseText,
+      this.responseXML,
+      this.statusText,
+      this.responseHeaders,
+      this.event,
+      this.action = AjaxRequestAction.PROCEED});
 
   Map<String, dynamic> toMap() {
     return {
@@ -1670,12 +2066,19 @@ class AjaxRequest {
   Map<String, dynamic> toJson() {
     return this.toMap();
   }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [FetchRequest] class.
 class FetchRequestAction {
   final int _value;
+
   const FetchRequestAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Aborts the fetch request.
@@ -1700,6 +2103,15 @@ class FetchRequestCredential {
   Map<String, dynamic> toMap() {
     return {"type": type};
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents the default credentials used by an [FetchRequest].
@@ -1714,6 +2126,15 @@ class FetchRequestCredentialDefault extends FetchRequestCredential {
       "type": type,
       "value": value,
     };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 }
 
@@ -1748,6 +2169,15 @@ class FetchRequestFederatedCredential extends FetchRequestCredential {
       "iconURL": iconURL
     };
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that represents a [PasswordCredential](https://developer.mozilla.org/en-US/docs/Web/API/PasswordCredential) type of credentials.
@@ -1776,6 +2206,15 @@ class FetchRequestPasswordCredential extends FetchRequestCredential {
       "password": password,
       "iconURL": iconURL
     };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 }
 
@@ -1822,18 +2261,18 @@ class FetchRequest {
 
   FetchRequest(
       {this.url,
-        this.method,
-        this.headers,
-        this.body,
-        this.mode,
-        this.credentials,
-        this.cache,
-        this.redirect,
-        this.referrer,
-        this.referrerPolicy,
-        this.integrity,
-        this.keepalive,
-        this.action = FetchRequestAction.PROCEED});
+      this.method,
+      this.headers,
+      this.body,
+      this.mode,
+      this.credentials,
+      this.cache,
+      this.redirect,
+      this.referrer,
+      this.referrerPolicy,
+      this.integrity,
+      this.keepalive,
+      this.action = FetchRequestAction.PROCEED});
 
   Map<String, dynamic> toMap() {
     return {
@@ -1857,8 +2296,12 @@ class FetchRequest {
     return this.toMap();
   }
 
-  static FetchRequestCredential createFetchRequestCredentialFromMap(
-      credentialsMap) {
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+
+  static FetchRequestCredential fromMap(credentialsMap) {
     if (credentialsMap != null) {
       if (credentialsMap["type"] == "default") {
         return FetchRequestCredentialDefault(
@@ -1887,7 +2330,9 @@ class FetchRequest {
 ///Class that represents the possible resource type defined for a [ContentBlockerTrigger].
 class ContentBlockerTriggerResourceType {
   final String _value;
+
   const ContentBlockerTriggerResourceType._internal(this._value);
+
   static ContentBlockerTriggerResourceType fromValue(String value) {
     return ([
       "document",
@@ -1904,22 +2349,23 @@ class ContentBlockerTriggerResourceType {
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
   static const DOCUMENT =
-  const ContentBlockerTriggerResourceType._internal('document');
+      const ContentBlockerTriggerResourceType._internal('document');
   static const IMAGE =
-  const ContentBlockerTriggerResourceType._internal('image');
+      const ContentBlockerTriggerResourceType._internal('image');
   static const STYLE_SHEET =
-  const ContentBlockerTriggerResourceType._internal('style-sheet');
+      const ContentBlockerTriggerResourceType._internal('style-sheet');
   static const SCRIPT =
-  const ContentBlockerTriggerResourceType._internal('script');
+      const ContentBlockerTriggerResourceType._internal('script');
   static const FONT = const ContentBlockerTriggerResourceType._internal('font');
   static const MEDIA =
-  const ContentBlockerTriggerResourceType._internal('media');
+      const ContentBlockerTriggerResourceType._internal('media');
   static const SVG_DOCUMENT =
-  const ContentBlockerTriggerResourceType._internal('svg-document');
+      const ContentBlockerTriggerResourceType._internal('svg-document');
 
   ///Any untyped load
   static const RAW = const ContentBlockerTriggerResourceType._internal('raw');
@@ -1933,7 +2379,9 @@ class ContentBlockerTriggerResourceType {
 ///Class that represents the possible load type for a [ContentBlockerTrigger].
 class ContentBlockerTriggerLoadType {
   final String _value;
+
   const ContentBlockerTriggerLoadType._internal(this._value);
+
   static ContentBlockerTriggerLoadType fromValue(String value) {
     return (["first-party", "third-party"].contains(value))
         ? ContentBlockerTriggerLoadType._internal(value)
@@ -1941,16 +2389,17 @@ class ContentBlockerTriggerLoadType {
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
   ///FIRST_PARTY is triggered only if the resource has the same scheme, domain, and port as the main page resource.
   static const FIRST_PARTY =
-  const ContentBlockerTriggerLoadType._internal('first-party');
+      const ContentBlockerTriggerLoadType._internal('first-party');
 
   ///THIRD_PARTY is triggered if the resource is not from the same domain as the main page resource.
   static const THIRD_PARTY =
-  const ContentBlockerTriggerLoadType._internal('third-party');
+      const ContentBlockerTriggerLoadType._internal('third-party');
 
   bool operator ==(value) => value == _value;
 
@@ -1961,7 +2410,9 @@ class ContentBlockerTriggerLoadType {
 ///Class that represents the kind of action that can be used with a [ContentBlockerTrigger].
 class ContentBlockerActionType {
   final String _value;
+
   const ContentBlockerActionType._internal(this._value);
+
   static ContentBlockerActionType fromValue(String value) {
     return (["block", "css-display-none", "make-https"].contains(value))
         ? ContentBlockerActionType._internal(value)
@@ -1969,6 +2420,7 @@ class ContentBlockerActionType {
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
@@ -1979,11 +2431,11 @@ class ContentBlockerActionType {
   ///
   ///**NOTE**: on Android, JavaScript must be enabled.
   static const CSS_DISPLAY_NONE =
-  const ContentBlockerActionType._internal('css-display-none');
+      const ContentBlockerActionType._internal('css-display-none');
 
   ///Changes a URL from http to https. URLs with a specified (nondefault) port and links using other protocols are unaffected.
   static const MAKE_HTTPS =
-  const ContentBlockerActionType._internal('make-https');
+      const ContentBlockerActionType._internal('make-https');
 
   bool operator ==(value) => value == _value;
 
@@ -2000,12 +2452,27 @@ class Cookie {
   dynamic value;
 
   Cookie({@required this.name, @required this.value});
+
+  Map<String, dynamic> toMap() {
+    return {"name": name, "value": value};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class used by [PermissionRequestResponse] class.
 class PermissionRequestResponseAction {
   final int _value;
+
   const PermissionRequestResponseAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Denies the request.
@@ -2020,7 +2487,7 @@ class PermissionRequestResponseAction {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the response used by the [androidOnPermissionRequest] event.
+///Class that represents the response used by the [WebView.androidOnPermissionRequest] event.
 class PermissionRequestResponse {
   ///Resources granted to be accessed by origin.
   List<String> resources;
@@ -2030,18 +2497,29 @@ class PermissionRequestResponse {
 
   PermissionRequestResponse(
       {this.resources = const [],
-        this.action = PermissionRequestResponseAction.DENY});
+      this.action = PermissionRequestResponseAction.DENY});
 
   Map<String, dynamic> toMap() {
     return {"resources": resources, "action": action?.toValue()};
   }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class that is used by [shouldOverrideUrlLoading] event.
+///Class that is used by [WebView.shouldOverrideUrlLoading] event.
 ///It represents the policy to pass back to the decision handler.
 class ShouldOverrideUrlLoadingAction {
   final int _value;
+
   const ShouldOverrideUrlLoadingAction._internal(this._value);
+
   int toValue() => _value;
 
   ///Cancel the navigation.
@@ -2062,11 +2540,14 @@ class ShouldOverrideUrlLoadingAction {
   }
 }
 
-///Class that represents the type of action triggering a navigation on iOS for the [shouldOverrideUrlLoading] event.
+///Class that represents the type of action triggering a navigation on iOS for the [WebView.shouldOverrideUrlLoading] event.
 class IOSWKNavigationType {
   final int _value;
+
   const IOSWKNavigationType._internal(this._value);
+
   int toValue() => _value;
+
   static IOSWKNavigationType fromValue(int value) {
     if (value != null && ((value >= 0 && value <= 4) || value == -1))
       return IOSWKNavigationType._internal(value);
@@ -2097,7 +2578,7 @@ class IOSWKNavigationType {
   int get hashCode => _value.hashCode;
 }
 
-///Class that represents the navigation request used by the [shouldOverrideUrlLoading] event.
+///Class that represents the navigation request used by the [WebView.shouldOverrideUrlLoading] event.
 class ShouldOverrideUrlLoadingRequest {
   ///Represents the url of the navigation request.
   String url;
@@ -2111,24 +2592,52 @@ class ShouldOverrideUrlLoadingRequest {
   ///Indicates whether the request was made for the main frame. On Android < 21, this is always `true`.
   bool isForMainFrame;
 
-  ///Gets whether the request was a result of a server-side redirect. Available only on Android. On Android < 21, this is always `false`.
-  bool androidHasGesture;
-
   ///Gets whether a gesture (such as a click) was associated with the request.
   ///For security reasons in certain situations this method may return `false` even though
   ///the sequence of events which caused the request to be created was initiated by a user
   ///gesture.
   ///
   ///Available only on Android. On Android < 24, this is always `false`.
+  bool androidHasGesture;
+
+  ///Gets whether the request was a result of a server-side redirect. Available only on Android. On Android < 21, this is always `false`.
   bool androidIsRedirect;
 
   ///The type of action triggering the navigation. Available only on iOS.
   IOSWKNavigationType iosWKNavigationType;
 
-  ShouldOverrideUrlLoadingRequest({this.url, this.method, this.headers, this.isForMainFrame, this.androidHasGesture, this.androidIsRedirect, this.iosWKNavigationType});
+  ShouldOverrideUrlLoadingRequest(
+      {this.url,
+      this.method,
+      this.headers,
+      this.isForMainFrame,
+      this.androidHasGesture,
+      this.androidIsRedirect,
+      this.iosWKNavigationType});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "url": url,
+      "headers": headers,
+      "method": method,
+      "isForMainFrame": isForMainFrame,
+      "androidHasGesture": androidHasGesture,
+      "androidIsRedirect": androidIsRedirect,
+      "iosWKNavigationType": iosWKNavigationType?.toValue()
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
-///Class that represents the navigation request used by the [shouldOverrideUrlLoading] event.
+///Class that represents the navigation request used by the [WebView.onCreateWindow] event.
 class OnCreateWindowRequest {
   ///Represents the url of the navigation request.
   String url;
@@ -2142,7 +2651,29 @@ class OnCreateWindowRequest {
   ///The type of action triggering the navigation. Available only on iOS.
   IOSWKNavigationType iosWKNavigationType;
 
-  OnCreateWindowRequest({this.url, this.androidIsDialog, this.androidIsUserGesture, this.iosWKNavigationType});
+  OnCreateWindowRequest(
+      {this.url,
+      this.androidIsDialog,
+      this.androidIsUserGesture,
+      this.iosWKNavigationType});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "url": url,
+      "androidIsDialog": androidIsDialog,
+      "androidIsUserGesture": androidIsUserGesture,
+      "iosWKNavigationType": iosWKNavigationType?.toValue()
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }
 
 ///Class that encapsulates information about the amount of storage currently used by an origin for the JavaScript storage APIs.
@@ -2160,13 +2691,14 @@ class AndroidWebStorageOrigin {
   AndroidWebStorageOrigin({this.origin, this.quota, this.usage});
 
   Map<String, dynamic> toMap() {
-    return {
-      "origin": origin,
-      "quota": quota,
-      "usage": usage
-    };
+    return {"origin": origin, "quota": quota, "usage": usage};
   }
 
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
   String toString() {
     return toMap().toString();
   }
@@ -2177,7 +2709,9 @@ class AndroidWebStorageOrigin {
 ///**NOTE**: available on iOS 9.0+.
 class IOSWKWebsiteDataType {
   final String _value;
+
   const IOSWKWebsiteDataType._internal(this._value);
+
   static IOSWKWebsiteDataType fromValue(String value) {
     return ([
       "WKWebsiteDataTypeFetchCache",
@@ -2196,6 +2730,7 @@ class IOSWKWebsiteDataType {
   }
 
   String toValue() => _value;
+
   @override
   String toString() => _value;
 
@@ -2203,45 +2738,48 @@ class IOSWKWebsiteDataType {
   ///
   ///**NOTE**: available on iOS 11.3+.
   static const WKWebsiteDataTypeFetchCache =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeFetchCache");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeFetchCache");
 
   ///On-disk caches.
   static const WKWebsiteDataTypeDiskCache =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeDiskCache");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeDiskCache");
 
   ///In-memory caches.
   static const WKWebsiteDataTypeMemoryCache =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeMemoryCache");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeMemoryCache");
 
   ///HTML offline web application caches.
   static const WKWebsiteDataTypeOfflineWebApplicationCache =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeOfflineWebApplicationCache");
+      const IOSWKWebsiteDataType._internal(
+          "WKWebsiteDataTypeOfflineWebApplicationCache");
 
   ///Cookies.
   static const WKWebsiteDataTypeCookies =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeCookies");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeCookies");
 
   ///HTML session storage.
   static const WKWebsiteDataTypeSessionStorage =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeSessionStorage");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeSessionStorage");
 
   ///HTML local storage.
   static const WKWebsiteDataTypeLocalStorage =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeLocalStorage");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeLocalStorage");
 
   ///WebSQL databases.
   static const WKWebsiteDataTypeWebSQLDatabases =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeWebSQLDatabases");
+      const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeWebSQLDatabases");
 
   ///IndexedDB databases.
   static const WKWebsiteDataTypeIndexedDBDatabases =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeIndexedDBDatabases");
+      const IOSWKWebsiteDataType._internal(
+          "WKWebsiteDataTypeIndexedDBDatabases");
 
   ///Service worker registrations.
   ///
   ///**NOTE**: available on iOS 11.3+.
   static const WKWebsiteDataTypeServiceWorkerRegistrations =
-  const IOSWKWebsiteDataType._internal("WKWebsiteDataTypeServiceWorkerRegistrations");
+      const IOSWKWebsiteDataType._internal(
+          "WKWebsiteDataTypeServiceWorkerRegistrations");
 
   ///Returns a set of all available website data types.
   static final Set<IOSWKWebsiteDataType> ALL = [
@@ -2281,12 +2819,14 @@ class IOSWKWebsiteDataRecord {
       dataTypesString.add(dataType.toValue());
     }
 
-    return {
-      "displayName": displayName,
-      "dataTypes": dataTypesString
-    };
+    return {"displayName": displayName, "dataTypes": dataTypesString};
   }
 
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
   String toString() {
     return toMap().toString();
   }
@@ -2295,7 +2835,9 @@ class IOSWKWebsiteDataRecord {
 ///Class representing the [InAppWebViewHitTestResult] type.
 class InAppWebViewHitTestResultType {
   final int _value;
+
   const InAppWebViewHitTestResultType._internal(this._value);
+
   static InAppWebViewHitTestResultType fromValue(int value) {
     if (value != null && [0, 2, 3, 4, 5, 7, 8, 9].contains(value))
       return InAppWebViewHitTestResultType._internal(value);
@@ -2303,6 +2845,7 @@ class InAppWebViewHitTestResultType {
   }
 
   int toValue() => _value;
+
   @override
   String toString() {
     switch (_value) {
@@ -2328,20 +2871,30 @@ class InAppWebViewHitTestResultType {
 
   ///Default [InAppWebViewHitTestResult], where the target is unknown.
   static const UNKNOWN_TYPE = const InAppWebViewHitTestResultType._internal(0);
+
   ///[InAppWebViewHitTestResult] for hitting a phone number.
   static const PHONE_TYPE = const InAppWebViewHitTestResultType._internal(2);
+
   ///[InAppWebViewHitTestResult] for hitting a map address.
   static const GEO_TYPE = const InAppWebViewHitTestResultType._internal(3);
+
   ///[InAppWebViewHitTestResult] for hitting an email address.
   static const EMAIL_TYPE = const InAppWebViewHitTestResultType._internal(4);
+
   ///[InAppWebViewHitTestResult] for hitting an HTML::img tag.
   static const IMAGE_TYPE = const InAppWebViewHitTestResultType._internal(5);
+
   ///[InAppWebViewHitTestResult] for hitting a HTML::a tag with src=http.
-  static const SRC_ANCHOR_TYPE = const InAppWebViewHitTestResultType._internal(7);
+  static const SRC_ANCHOR_TYPE =
+      const InAppWebViewHitTestResultType._internal(7);
+
   ///[InAppWebViewHitTestResult] for hitting a HTML::a tag with src=http + HTML::img.
-  static const SRC_IMAGE_ANCHOR_TYPE = const InAppWebViewHitTestResultType._internal(8);
+  static const SRC_IMAGE_ANCHOR_TYPE =
+      const InAppWebViewHitTestResultType._internal(8);
+
   ///[InAppWebViewHitTestResult] for hitting an edit text area.
-  static const EDIT_TEXT_TYPE = const InAppWebViewHitTestResultType._internal(9);
+  static const EDIT_TEXT_TYPE =
+      const InAppWebViewHitTestResultType._internal(9);
 
   bool operator ==(value) => value == _value;
 
@@ -2353,8 +2906,376 @@ class InAppWebViewHitTestResultType {
 class InAppWebViewHitTestResult {
   ///The type of the hit test result.
   InAppWebViewHitTestResultType type;
+
   ///Additional type-dependant information about the result.
   String extra;
 
   InAppWebViewHitTestResult({this.type, this.extra});
+
+  Map<String, dynamic> toMap() {
+    return {"type": type?.toValue(), "extra": extra};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+}
+
+///Class that represents the action to take used by the [WebView.androidOnRenderProcessUnresponsive] and [WebView.androidOnRenderProcessResponsive] event
+///to terminate the Android [WebViewRenderProcess](https://developer.android.com/reference/android/webkit/WebViewRenderProcess).
+class WebViewRenderProcessAction {
+  final int _value;
+
+  const WebViewRenderProcessAction._internal(this._value);
+
+  int toValue() => _value;
+
+  ///Cause this renderer to terminate.
+  static const TERMINATE = const WebViewRenderProcessAction._internal(0);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+
+  Map<String, dynamic> toMap() {
+    return {"action": _value};
+  }
+}
+
+///Class that provides more specific information about why the render process exited.
+///It is used by the [WebView.androidOnRenderProcessGone] event.
+class RenderProcessGoneDetail {
+  ///Indicates whether the render process was observed to crash, or whether it was killed by the system.
+  ///
+  ///If the render process was killed, this is most likely caused by the system being low on memory.
+  bool didCrash;
+
+  /// Returns the renderer priority that was set at the time that the renderer exited. This may be greater than the priority that
+  /// any individual [WebView] requested using [].
+  RendererPriority rendererPriorityAtExit;
+
+  RenderProcessGoneDetail({this.didCrash, this.rendererPriorityAtExit});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "didCrash": didCrash,
+      "rendererPriorityAtExit": rendererPriorityAtExit?.toValue()
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+}
+
+///Class used by [RendererPriorityPolicy] class.
+class RendererPriority {
+  final int _value;
+
+  const RendererPriority._internal(this._value);
+
+  static RendererPriority fromValue(int value) {
+    if (value != null && value >= 0 && value <= 2)
+      return RendererPriority._internal(value);
+    return null;
+  }
+
+  int toValue() => _value;
+
+  @override
+  String toString() {
+    switch (_value) {
+      case 0:
+        return "RENDERER_PRIORITY_WAIVED";
+      case 1:
+        return "RENDERER_PRIORITY_BOUND";
+      case 2:
+      default:
+        return "RENDERER_PRIORITY_IMPORTANT";
+    }
+  }
+
+  ///The renderer associated with this WebView is bound with Android `Context#BIND_WAIVE_PRIORITY`.
+  ///At this priority level WebView renderers will be strong targets for out of memory killing.
+  static const RENDERER_PRIORITY_WAIVED = const RendererPriority._internal(0);
+
+  ///The renderer associated with this WebView is bound with the default priority for services.
+  static const RENDERER_PRIORITY_BOUND = const RendererPriority._internal(1);
+
+  ///The renderer associated with this WebView is bound with Android `Context#BIND_IMPORTANT`.
+  static const RENDERER_PRIORITY_IMPORTANT =
+      const RendererPriority._internal(2);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+}
+
+///Class that represents the priority policy will be used to determine whether an out of process renderer should be considered to be a target for OOM killing.
+///When a WebView is destroyed it will cease to be considerered when calculating the renderer priority.
+///Once no WebViews remain associated with the renderer, the priority of the renderer will be reduced to [RendererPriority.RENDERER_PRIORITY_WAIVED].
+///The default policy is to set the priority to [RendererPriority.RENDERER_PRIORITY_IMPORTANT] regardless of visibility,
+///and this should not be changed unless the caller also handles renderer crashes with [WebView.androidOnRenderProcessGone].
+///Any other setting will result in WebView renderers being killed by the system more aggressively than the application.
+class RendererPriorityPolicy {
+  ///The minimum priority at which this WebView desires the renderer process to be bound.
+  RendererPriority rendererRequestedPriority;
+
+  ///If true, this flag specifies that when this WebView is not visible, it will be treated as if it had requested a priority of [RendererPriority.RENDERER_PRIORITY_WAIVED].
+  bool waivedWhenNotVisible;
+
+  RendererPriorityPolicy(
+      {@required this.rendererRequestedPriority,
+      @required this.waivedWhenNotVisible});
+
+  Map<String, dynamic> toMap() {
+    return {
+      "rendererRequestedPriority": rendererRequestedPriority?.toValue(),
+      "waivedWhenNotVisible": waivedWhenNotVisible
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+
+  static RendererPriorityPolicy fromMap(Map<String, dynamic> map) {
+    return map != null
+        ? RendererPriorityPolicy(
+            rendererRequestedPriority:
+                RendererPriority.fromValue(map["rendererRequestedPriority"]),
+            waivedWhenNotVisible: map["waivedWhenNotVisible"])
+        : null;
+  }
+}
+
+///Class that represents the action to take used by the [WebView.androidOnFormResubmission] event.
+class FormResubmissionAction {
+  final int _value;
+
+  const FormResubmissionAction._internal(this._value);
+
+  int toValue() => _value;
+
+  ///Resend data
+  static const RESEND = const FormResubmissionAction._internal(0);
+
+  ///Don't resend data
+  static const DONT_RESEND = const FormResubmissionAction._internal(1);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+
+  Map<String, dynamic> toMap() {
+    return {"action": _value};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
+}
+
+///Class that represents an Android-specific class used to configure the WebView's over-scroll mode.
+///Setting the over-scroll mode of a WebView will have an effect only if the WebView is capable of scrolling.
+class AndroidOverScrollMode {
+  final int _value;
+
+  const AndroidOverScrollMode._internal(this._value);
+
+  static AndroidOverScrollMode fromValue(int value) {
+    if (value != null && value >= 0 && value <= 2)
+      return AndroidOverScrollMode._internal(value);
+    return null;
+  }
+
+  int toValue() => _value;
+
+  @override
+  String toString() {
+    switch (_value) {
+      case 1:
+        return "OVER_SCROLL_IF_CONTENT_SCROLLS";
+      case 2:
+        return "OVER_SCROLL_NEVER";
+      case 0:
+      default:
+        return "OVER_SCROLL_ALWAYS";
+    }
+  }
+
+  ///Always allow a user to over-scroll this view, provided it is a view that can scroll.
+  static const OVER_SCROLL_ALWAYS = const AndroidOverScrollMode._internal(0);
+
+  ///Allow a user to over-scroll this view only if the content is large enough to meaningfully scroll, provided it is a view that can scroll.
+  static const OVER_SCROLL_IF_CONTENT_SCROLLS =
+      const AndroidOverScrollMode._internal(1);
+
+  ///Never allow a user to over-scroll this view.
+  static const OVER_SCROLL_NEVER = const AndroidOverScrollMode._internal(2);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+}
+
+///Class that represents an Android-specific class used to configure the style of the scrollbars.
+///The scrollbars can be overlaid or inset.
+///When inset, they add to the padding of the view. And the scrollbars can be drawn inside the padding area or on the edge of the view.
+///For example, if a view has a background drawable and you want to draw the scrollbars inside the padding specified by the drawable,
+///you can use [AndroidScrollBarStyle.SCROLLBARS_INSIDE_OVERLAY] or [AndroidScrollBarStyle.SCROLLBARS_INSIDE_INSET].
+///If you want them to appear at the edge of the view, ignoring the padding,
+///then you can use [AndroidScrollBarStyle.SCROLLBARS_OUTSIDE_OVERLAY] or [AndroidScrollBarStyle.SCROLLBARS_OUTSIDE_INSET].
+class AndroidScrollBarStyle {
+  final int _value;
+
+  const AndroidScrollBarStyle._internal(this._value);
+
+  static AndroidScrollBarStyle fromValue(int value) {
+    if (value != null && [0, 16777216, 33554432, 50331648].contains(value))
+      return AndroidScrollBarStyle._internal(value);
+    return null;
+  }
+
+  int toValue() => _value;
+
+  @override
+  String toString() {
+    switch (_value) {
+      case 16777216:
+        return "SCROLLBARS_INSIDE_INSET";
+      case 33554432:
+        return "SCROLLBARS_OUTSIDE_OVERLAY";
+      case 50331648:
+        return "SCROLLBARS_OUTSIDE_INSET";
+      case 0:
+      default:
+        return "SCROLLBARS_INSIDE_OVERLAY";
+    }
+  }
+
+  ///The scrollbar style to display the scrollbars inside the content area, without increasing the padding.
+  ///The scrollbars will be overlaid with translucency on the view's content.
+  static const SCROLLBARS_INSIDE_OVERLAY =
+      const AndroidScrollBarStyle._internal(0);
+
+  ///The scrollbar style to display the scrollbars inside the padded area, increasing the padding of the view.
+  ///The scrollbars will not overlap the content area of the view.
+  static const SCROLLBARS_INSIDE_INSET =
+      const AndroidScrollBarStyle._internal(16777216);
+
+  ///The scrollbar style to display the scrollbars at the edge of the view, without increasing the padding.
+  ///The scrollbars will be overlaid with translucency.
+  static const SCROLLBARS_OUTSIDE_OVERLAY =
+      const AndroidScrollBarStyle._internal(33554432);
+
+  ///The scrollbar style to display the scrollbars at the edge of the view, increasing the padding of the view.
+  ///The scrollbars will only overlap the background, if any.
+  static const SCROLLBARS_OUTSIDE_INSET =
+      const AndroidScrollBarStyle._internal(50331648);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+}
+
+///Class that represents an Android-specific class used to configure the position of the vertical scroll bar.
+class AndroidVerticalScrollbarPosition {
+  final int _value;
+
+  const AndroidVerticalScrollbarPosition._internal(this._value);
+
+  static AndroidVerticalScrollbarPosition fromValue(int value) {
+    if (value != null && value >= 0 && value <= 2)
+      return AndroidVerticalScrollbarPosition._internal(value);
+    return null;
+  }
+
+  int toValue() => _value;
+
+  @override
+  String toString() {
+    switch (_value) {
+      case 1:
+        return "SCROLLBAR_POSITION_LEFT";
+      case 2:
+        return "SCROLLBAR_POSITION_RIGHT";
+      case 0:
+      default:
+        return "SCROLLBAR_POSITION_DEFAULT";
+    }
+  }
+
+  ///Position the scroll bar at the default position as determined by the system.
+  static const SCROLLBAR_POSITION_DEFAULT =
+      const AndroidVerticalScrollbarPosition._internal(0);
+
+  ///Position the scroll bar along the left edge.
+  static const SCROLLBAR_POSITION_LEFT =
+      const AndroidVerticalScrollbarPosition._internal(1);
+
+  ///Position the scroll bar along the right edge.
+  static const SCROLLBAR_POSITION_RIGHT =
+      const AndroidVerticalScrollbarPosition._internal(2);
+
+  bool operator ==(value) => value == _value;
+
+  @override
+  int get hashCode => _value.hashCode;
+}
+
+///Class that represents an Android WebView package info.
+class AndroidWebViewPackageInfo {
+  ///The version name of this WebView package.
+  String versionName;
+
+  ///The name of this WebView package.
+  String packageName;
+
+  AndroidWebViewPackageInfo({this.versionName, this.packageName});
+
+  static AndroidWebViewPackageInfo fromMap(Map<String, dynamic> map) {
+    return map != null
+        ? AndroidWebViewPackageInfo(
+            versionName: map["versionName"], packageName: map["packageName"])
+        : AndroidWebViewPackageInfo();
+  }
+
+  Map<String, dynamic> toMap() {
+    return {"versionName": versionName, "packageName": packageName};
+  }
+
+  Map<String, dynamic> toJson() {
+    return this.toMap();
+  }
+
+  @override
+  String toString() {
+    return toMap().toString();
+  }
 }

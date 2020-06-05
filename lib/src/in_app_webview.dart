@@ -11,17 +11,6 @@ import 'webview.dart';
 import 'types.dart';
 import 'in_app_webview_controller.dart';
 
-///List of forbidden names for JavaScript handlers.
-const javaScriptHandlerForbiddenNames = [
-  "onLoadResource",
-  "shouldInterceptAjaxRequest",
-  "onAjaxReadyStateChange",
-  "onAjaxProgress",
-  "shouldInterceptFetchRequest",
-  "onPrint",
-  "androidKeyboardWorkaroundFocusoutEvent"
-];
-
 ///Flutter Widget for adding an **inline native WebView** integrated in the flutter widget tree.
 class InAppWebView extends StatefulWidget implements WebView {
   /// `gestureRecognizers` specifies which gestures should be consumed by the web view.
@@ -39,12 +28,12 @@ class InAppWebView extends StatefulWidget implements WebView {
     this.initialFile,
     this.initialData,
     this.initialHeaders = const {},
-    @required this.initialOptions,
+    this.initialOptions,
     this.contextMenu,
     this.onWebViewCreated,
     this.onLoadStart,
-    this.onSelectText,
     this.onLoadStop,
+    this.onSelectText,
     this.onLoadError,
     this.onLoadHttpError,
     this.onConsoleMessage,
@@ -71,12 +60,18 @@ class InAppWebView extends StatefulWidget implements WebView {
     this.onLongPressHitTestResult,
     this.onEnterFullscreen,
     this.onExitFullscreen,
+    this.onPageCommitVisible,
     this.androidOnSafeBrowsingHit,
     this.androidOnPermissionRequest,
     this.androidOnGeolocationPermissionsShowPrompt,
     this.androidOnGeolocationPermissionsHidePrompt,
+    this.androidShouldInterceptRequest,
+    this.androidOnRenderProcessGone,
+    this.androidOnRenderProcessResponsive,
+    this.androidOnRenderProcessUnresponsive,
+    this.androidOnFormResubmission,
+    this.androidOnScaleChanged,
     this.iosOnWebContentProcessDidTerminate,
-    this.iosOnDidCommit,
     this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
     this.gestureRecognizers,
   }) : super(key: key);
@@ -86,12 +81,12 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  androidOnGeolocationPermissionsHidePrompt;
+      androidOnGeolocationPermissionsHidePrompt;
 
   @override
   final Future<GeolocationPermissionShowPromptResponse> Function(
-      InAppWebViewController controller, String origin)
-  androidOnGeolocationPermissionsShowPrompt;
+          InAppWebViewController controller, String origin)
+      androidOnGeolocationPermissionsShowPrompt;
 
   @override
   final Future<PermissionRequestResponse> Function(
@@ -122,30 +117,31 @@ class InAppWebView extends StatefulWidget implements WebView {
   final ContextMenu contextMenu;
 
   @override
-  final Future<void> Function(InAppWebViewController controller) iosOnDidCommit;
+  final Future<void> Function(InAppWebViewController controller, String url)
+      onPageCommitVisible;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  iosOnDidReceiveServerRedirectForProvisionalNavigation;
+      iosOnDidReceiveServerRedirectForProvisionalNavigation;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  iosOnWebContentProcessDidTerminate;
+      iosOnWebContentProcessDidTerminate;
 
   @override
   final Future<AjaxRequestAction> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  onAjaxProgress;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      onAjaxProgress;
 
   @override
   final Future<AjaxRequestAction> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  onAjaxReadyStateChange;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      onAjaxReadyStateChange;
 
   @override
   final void Function(
-      InAppWebViewController controller, ConsoleMessage consoleMessage)
-  onConsoleMessage;
+          InAppWebViewController controller, ConsoleMessage consoleMessage)
+      onConsoleMessage;
 
   @override
   final void Function(InAppWebViewController controller,
@@ -153,7 +149,7 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(InAppWebViewController controller, String url)
-  onDownloadStart;
+      onDownloadStart;
 
   @override
   final void Function(InAppWebViewController controller, int activeMatchOrdinal,
@@ -181,17 +177,17 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(
-      InAppWebViewController controller, LoadedResource resource)
-  onLoadResource;
+          InAppWebViewController controller, LoadedResource resource)
+      onLoadResource;
 
   @override
   final Future<CustomSchemeResponse> Function(
-      InAppWebViewController controller, String scheme, String url)
-  onLoadResourceCustomScheme;
+          InAppWebViewController controller, String scheme, String url)
+      onLoadResourceCustomScheme;
 
   @override
   final void Function(InAppWebViewController controller, String url)
-  onLoadStart;
+      onLoadStart;
 
   @override
   final void Function(InAppWebViewController controller, String url,String text)
@@ -209,56 +205,85 @@ class InAppWebView extends StatefulWidget implements WebView {
 
   @override
   final void Function(InAppWebViewController controller, int progress)
-  onProgressChanged;
+      onProgressChanged;
 
   @override
   final Future<ClientCertResponse> Function(
-      InAppWebViewController controller, ClientCertChallenge challenge)
-  onReceivedClientCertRequest;
+          InAppWebViewController controller, ClientCertChallenge challenge)
+      onReceivedClientCertRequest;
 
   @override
   final Future<HttpAuthResponse> Function(
-      InAppWebViewController controller, HttpAuthChallenge challenge)
-  onReceivedHttpAuthRequest;
+          InAppWebViewController controller, HttpAuthChallenge challenge)
+      onReceivedHttpAuthRequest;
 
   @override
   final Future<ServerTrustAuthResponse> Function(
-      InAppWebViewController controller, ServerTrustChallenge challenge)
-  onReceivedServerTrustAuthRequest;
+          InAppWebViewController controller, ServerTrustChallenge challenge)
+      onReceivedServerTrustAuthRequest;
 
   @override
   final void Function(InAppWebViewController controller, int x, int y)
-  onScrollChanged;
+      onScrollChanged;
 
   @override
   final void Function(
-      InAppWebViewController controller, String url, bool androidIsReload)
-  onUpdateVisitedHistory;
+          InAppWebViewController controller, String url, bool androidIsReload)
+      onUpdateVisitedHistory;
 
   @override
   final void Function(InAppWebViewController controller) onWebViewCreated;
 
   @override
   final Future<AjaxRequest> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  shouldInterceptAjaxRequest;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      shouldInterceptAjaxRequest;
 
   @override
   final Future<FetchRequest> Function(
-      InAppWebViewController controller, FetchRequest fetchRequest)
-  shouldInterceptFetchRequest;
+          InAppWebViewController controller, FetchRequest fetchRequest)
+      shouldInterceptFetchRequest;
 
   @override
   final Future<ShouldOverrideUrlLoadingAction> Function(
-      InAppWebViewController controller,
-      ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
-  shouldOverrideUrlLoading;
+          InAppWebViewController controller,
+          ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
+      shouldOverrideUrlLoading;
 
   @override
   final void Function(InAppWebViewController controller) onEnterFullscreen;
 
   @override
   final void Function(InAppWebViewController controller) onExitFullscreen;
+
+  @override
+  final Future<WebResourceResponse> Function(
+          InAppWebViewController controller, WebResourceRequest request)
+      androidShouldInterceptRequest;
+
+  @override
+  final Future<WebViewRenderProcessAction> Function(
+          InAppWebViewController controller, String url)
+      androidOnRenderProcessUnresponsive;
+
+  @override
+  final Future<WebViewRenderProcessAction> Function(
+          InAppWebViewController controller, String url)
+      androidOnRenderProcessResponsive;
+
+  @override
+  final Future<void> Function(
+          InAppWebViewController controller, RenderProcessGoneDetail detail)
+      androidOnRenderProcessGone;
+
+  @override
+  final Future<FormResubmissionAction> Function(
+      InAppWebViewController controller, String url) androidOnFormResubmission;
+
+  @override
+  final Future<void> Function(
+          InAppWebViewController controller, double oldScale, double newScale)
+      androidOnScaleChanged;
 }
 
 class _InAppWebViewState extends State<InAppWebView> {

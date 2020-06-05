@@ -12,56 +12,62 @@ import 'in_app_webview_controller.dart';
 class HeadlessInAppWebView implements WebView {
   String uuid;
   bool _isDisposed = true;
-  static const MethodChannel _sharedChannel = const MethodChannel('com.pichillilorenzo/flutter_headless_inappwebview');
+  static const MethodChannel _sharedChannel =
+      const MethodChannel('com.pichillilorenzo/flutter_headless_inappwebview');
 
   ///WebView Controller that can be used to access the [InAppWebViewController] API.
   InAppWebViewController webViewController;
 
-  HeadlessInAppWebView({
-    this.onWebViewCreated,
-    this.onLoadStart,
-    this.onLoadStop,
-    this.onLoadError,
-    this.onSelectText,
-    this.onLoadHttpError,
-    this.onProgressChanged,
-    this.onConsoleMessage,
-    this.shouldOverrideUrlLoading,
-    this.onLoadResource,
-    this.onScrollChanged,
-    this.onDownloadStart,
-    this.onLoadResourceCustomScheme,
-    this.onCreateWindow,
-    this.onJsAlert,
-    this.onJsConfirm,
-    this.onJsPrompt,
-    this.onReceivedHttpAuthRequest,
-    this.onReceivedServerTrustAuthRequest,
-    this.onReceivedClientCertRequest,
-    this.onFindResultReceived,
-    this.shouldInterceptAjaxRequest,
-    this.onAjaxReadyStateChange,
-    this.onAjaxProgress,
-    this.shouldInterceptFetchRequest,
-    this.onUpdateVisitedHistory,
-    this.onPrint,
-    this.onLongPressHitTestResult,
-    this.onEnterFullscreen,
-    this.onExitFullscreen,
-    this.androidOnSafeBrowsingHit,
-    this.androidOnPermissionRequest,
-    this.androidOnGeolocationPermissionsShowPrompt,
-    this.androidOnGeolocationPermissionsHidePrompt,
-    this.iosOnWebContentProcessDidTerminate,
-    this.iosOnDidCommit,
-    this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
-    this.initialUrl,
-    this.initialFile,
-    this.initialData,
-    this.initialHeaders,
-    this.initialOptions,
-    this.contextMenu
-  }) {
+  HeadlessInAppWebView(
+      {this.onWebViewCreated,
+      this.onLoadStart,
+      this.onLoadStop,
+      this.onSelectText,
+      this.onLoadError,
+      this.onLoadHttpError,
+      this.onProgressChanged,
+      this.onConsoleMessage,
+      this.shouldOverrideUrlLoading,
+      this.onLoadResource,
+      this.onScrollChanged,
+      this.onDownloadStart,
+      this.onLoadResourceCustomScheme,
+      this.onCreateWindow,
+      this.onJsAlert,
+      this.onJsConfirm,
+      this.onJsPrompt,
+      this.onReceivedHttpAuthRequest,
+      this.onReceivedServerTrustAuthRequest,
+      this.onReceivedClientCertRequest,
+      this.onFindResultReceived,
+      this.shouldInterceptAjaxRequest,
+      this.onAjaxReadyStateChange,
+      this.onAjaxProgress,
+      this.shouldInterceptFetchRequest,
+      this.onUpdateVisitedHistory,
+      this.onPrint,
+      this.onLongPressHitTestResult,
+      this.onEnterFullscreen,
+      this.onExitFullscreen,
+      this.onPageCommitVisible,
+      this.androidOnSafeBrowsingHit,
+      this.androidOnPermissionRequest,
+      this.androidOnGeolocationPermissionsShowPrompt,
+      this.androidOnGeolocationPermissionsHidePrompt,
+      this.androidShouldInterceptRequest,
+      this.androidOnRenderProcessGone,
+      this.androidOnRenderProcessResponsive,
+      this.androidOnRenderProcessUnresponsive,
+      this.androidOnFormResubmission,
+      this.androidOnScaleChanged,
+      this.iosOnWebContentProcessDidTerminate,
+      this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+      this.initialUrl,
+      this.initialFile,
+      this.initialData,
+      this.initialHeaders,
+      this.initialOptions,
+      this.contextMenu}) {
     uuid = uuidGenerator.v4();
     webViewController = new InAppWebViewController(uuid, this);
   }
@@ -84,14 +90,16 @@ class HeadlessInAppWebView implements WebView {
     _isDisposed = false;
     Map<String, dynamic> args = <String, dynamic>{};
     args.putIfAbsent('uuid', () => uuid);
-    args.putIfAbsent('params', () => <String, dynamic>{
-      'initialUrl': '${Uri.parse(this.initialUrl)}',
-      'initialFile': this.initialFile,
-      'initialData': this.initialData?.toMap(),
-      'initialHeaders': this.initialHeaders,
-      'initialOptions': this.initialOptions?.toMap(),
-      'contextMenu': this.contextMenu?.toMap() ?? {}
-    });
+    args.putIfAbsent(
+        'params',
+        () => <String, dynamic>{
+              'initialUrl': '${Uri.parse(this.initialUrl)}',
+              'initialFile': this.initialFile,
+              'initialData': this.initialData?.toMap(),
+              'initialHeaders': this.initialHeaders,
+              'initialOptions': this.initialOptions?.toMap() ?? {},
+              'contextMenu': this.contextMenu?.toMap() ?? {}
+            });
     await _sharedChannel.invokeMethod('createHeadlessWebView', args);
   }
 
@@ -108,12 +116,12 @@ class HeadlessInAppWebView implements WebView {
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  androidOnGeolocationPermissionsHidePrompt;
+      androidOnGeolocationPermissionsHidePrompt;
 
   @override
   final Future<GeolocationPermissionShowPromptResponse> Function(
-      InAppWebViewController controller, String origin)
-  androidOnGeolocationPermissionsShowPrompt;
+          InAppWebViewController controller, String origin)
+      androidOnGeolocationPermissionsShowPrompt;
 
   @override
   final Future<PermissionRequestResponse> Function(
@@ -144,30 +152,31 @@ class HeadlessInAppWebView implements WebView {
   final String initialUrl;
 
   @override
-  final Future<void> Function(InAppWebViewController controller) iosOnDidCommit;
+  final Future<void> Function(InAppWebViewController controller, String url)
+      onPageCommitVisible;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  iosOnDidReceiveServerRedirectForProvisionalNavigation;
+      iosOnDidReceiveServerRedirectForProvisionalNavigation;
 
   @override
   final Future<void> Function(InAppWebViewController controller)
-  iosOnWebContentProcessDidTerminate;
+      iosOnWebContentProcessDidTerminate;
 
   @override
   final Future<AjaxRequestAction> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  onAjaxProgress;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      onAjaxProgress;
 
   @override
   final Future<AjaxRequestAction> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  onAjaxReadyStateChange;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      onAjaxReadyStateChange;
 
   @override
   final void Function(
-      InAppWebViewController controller, ConsoleMessage consoleMessage)
-  onConsoleMessage;
+          InAppWebViewController controller, ConsoleMessage consoleMessage)
+      onConsoleMessage;
 
   @override
   final void Function(InAppWebViewController controller,
@@ -175,7 +184,7 @@ class HeadlessInAppWebView implements WebView {
 
   @override
   final void Function(InAppWebViewController controller, String url)
-  onDownloadStart;
+      onDownloadStart;
 
   @override
   final void Function(InAppWebViewController controller, int activeMatchOrdinal,
@@ -203,17 +212,17 @@ class HeadlessInAppWebView implements WebView {
 
   @override
   final void Function(
-      InAppWebViewController controller, LoadedResource resource)
-  onLoadResource;
+          InAppWebViewController controller, LoadedResource resource)
+      onLoadResource;
 
   @override
   final Future<CustomSchemeResponse> Function(
-      InAppWebViewController controller, String scheme, String url)
-  onLoadResourceCustomScheme;
+          InAppWebViewController controller, String scheme, String url)
+      onLoadResourceCustomScheme;
 
   @override
   final void Function(InAppWebViewController controller, String url)
-  onLoadStart;
+      onLoadStart;
 
   @override
   final void Function(InAppWebViewController controller, String url,String text)
@@ -231,54 +240,83 @@ class HeadlessInAppWebView implements WebView {
 
   @override
   final void Function(InAppWebViewController controller, int progress)
-  onProgressChanged;
+      onProgressChanged;
 
   @override
   final Future<ClientCertResponse> Function(
-      InAppWebViewController controller, ClientCertChallenge challenge)
-  onReceivedClientCertRequest;
+          InAppWebViewController controller, ClientCertChallenge challenge)
+      onReceivedClientCertRequest;
 
   @override
   final Future<HttpAuthResponse> Function(
-      InAppWebViewController controller, HttpAuthChallenge challenge)
-  onReceivedHttpAuthRequest;
+          InAppWebViewController controller, HttpAuthChallenge challenge)
+      onReceivedHttpAuthRequest;
 
   @override
   final Future<ServerTrustAuthResponse> Function(
-      InAppWebViewController controller, ServerTrustChallenge challenge)
-  onReceivedServerTrustAuthRequest;
+          InAppWebViewController controller, ServerTrustChallenge challenge)
+      onReceivedServerTrustAuthRequest;
 
   @override
   final void Function(InAppWebViewController controller, int x, int y)
-  onScrollChanged;
+      onScrollChanged;
 
   @override
   final void Function(
-      InAppWebViewController controller, String url, bool androidIsReload)
-  onUpdateVisitedHistory;
+          InAppWebViewController controller, String url, bool androidIsReload)
+      onUpdateVisitedHistory;
 
   @override
   final void Function(InAppWebViewController controller) onWebViewCreated;
 
   @override
   final Future<AjaxRequest> Function(
-      InAppWebViewController controller, AjaxRequest ajaxRequest)
-  shouldInterceptAjaxRequest;
+          InAppWebViewController controller, AjaxRequest ajaxRequest)
+      shouldInterceptAjaxRequest;
 
   @override
   final Future<FetchRequest> Function(
-      InAppWebViewController controller, FetchRequest fetchRequest)
-  shouldInterceptFetchRequest;
+          InAppWebViewController controller, FetchRequest fetchRequest)
+      shouldInterceptFetchRequest;
 
   @override
   final Future<ShouldOverrideUrlLoadingAction> Function(
-      InAppWebViewController controller,
-      ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
-  shouldOverrideUrlLoading;
+          InAppWebViewController controller,
+          ShouldOverrideUrlLoadingRequest shouldOverrideUrlLoadingRequest)
+      shouldOverrideUrlLoading;
 
   @override
   final void Function(InAppWebViewController controller) onEnterFullscreen;
 
   @override
   final void Function(InAppWebViewController controller) onExitFullscreen;
+
+  @override
+  final Future<WebResourceResponse> Function(
+          InAppWebViewController controller, WebResourceRequest request)
+      androidShouldInterceptRequest;
+
+  @override
+  final Future<WebViewRenderProcessAction> Function(
+          InAppWebViewController controller, String url)
+      androidOnRenderProcessUnresponsive;
+
+  @override
+  final Future<WebViewRenderProcessAction> Function(
+          InAppWebViewController controller, String url)
+      androidOnRenderProcessResponsive;
+
+  @override
+  final Future<void> Function(
+          InAppWebViewController controller, RenderProcessGoneDetail detail)
+      androidOnRenderProcessGone;
+
+  @override
+  final Future<FormResubmissionAction> Function(
+      InAppWebViewController controller, String url) androidOnFormResubmission;
+
+  @override
+  final Future<void> Function(
+          InAppWebViewController controller, double oldScale, double newScale)
+      androidOnScaleChanged;
 }
