@@ -793,6 +793,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
                 if #available(iOS 10, *) {
                    if action == #selector(UIResponderStandardEditActions.select(_:))
                        || action == #selector(UIResponderStandardEditActions.cut(_:))
+                       || action == #selector(UIResponderStandardEditActions.copy(_:))
                        || action == #selector(UIResponderStandardEditActions.paste(_:))
                        || action == #selector(UIResponderStandardEditActions.delete(_:))
                        || (action == #selector(customShare))
@@ -801,6 +802,7 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
                    }
                } else {
                    if  action == #selector(select(_:))
+                      || action == #selector(copy(_:))
                       || action == #selector(cut(_:))
                       || action == #selector(paste(_:))
                       || action == #selector(delete(_:))
