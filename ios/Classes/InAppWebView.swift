@@ -2720,6 +2720,21 @@ public class InAppWebView: WKWebView, UIScrollViewDelegate, WKUIDelegate, WKNavi
         }
     }
     
+    @available(iOS 10.0, *)
+    public func webView(_ webView: WKWebView, shouldPreviewElement elementInfo: WKPreviewElementInfo) -> Bool {
+        return false
+    }
+//
+//    @available(iOS 10.0, *)
+//    public func webView(_ webView: WKWebView, commitPreviewingViewController previewingViewController: UIViewController) {
+//
+//    }
+//
+//    @available(iOS 10.0, *)
+//    public func webView(_ webView: WKWebView, previewingViewControllerForElement elementInfo: WKPreviewElementInfo, defaultActions previewActions: [WKPreviewActionItem]) -> UIViewController? {
+//        return nil
+//    }
+//
     public func clearFocus() {
         self.scrollView.subviews.first?.resignFirstResponder()
     }
